@@ -96,7 +96,7 @@ public class ImuFagment extends Fragment {
 
         // Initialize TextViews for magnetometer data
         magXTextView = view.findViewById(R.id.magXTextView);
-        magYTextView = view.findViewById(R.id.magXTextView);
+        magYTextView = view.findViewById(R.id.magYTextView);
         magZTextView = view.findViewById(R.id.magZTextView);
 
         // Initialize the back button and set a click listener

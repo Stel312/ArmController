@@ -51,6 +51,7 @@ public class GimbleFragment extends Fragment implements GLSurfaceView.Renderer {
     private int mColorHandle;
     private int mMVPMatrixHandle;
 
+    // Cube vertices
     private final float[] cubeVertices = {
             -0.5f, -0.5f, -0.5f,
             0.5f, -0.5f, -0.5f,
@@ -62,6 +63,16 @@ public class GimbleFragment extends Fragment implements GLSurfaceView.Renderer {
             -0.5f,  0.5f,  0.5f,
     };
 
+    // Axis vertices
+    private final float[] axisVertices = {
+            0.0f, 0.0f, 0.0f,  // Origin
+            1.0f, 0.0f, 0.0f,  // X axis
+            0.0f, 0.0f, 0.0f,  // Origin
+            0.0f, 1.0f, 0.0f,  // Y axis
+            0.0f, 0.0f, 0.0f,  // Origin
+            0.0f, 0.0f, 1.0f   // Z axis
+    };
+
     private final short[] drawOrder = {
             0, 1, 2, 0, 2, 3,
             4, 5, 6, 4, 6, 7,
@@ -71,10 +82,21 @@ public class GimbleFragment extends Fragment implements GLSurfaceView.Renderer {
             2, 3, 7, 2, 7, 6,
     };
 
+    private final short[] axisDrawOrder = {
+            0, 1,
+            2, 3,
+            4, 5
+    };
+
     private final float[] cubeColor = { 0.6f, 0.8f, 0.7f, 1.0f }; // light green
+    private final float[] xAxisColor = { 1.0f, 0.0f, 0.0f, 1.0f }; // Red
+    private final float[] yAxisColor = { 0.0f, 1.0f, 0.0f, 1.0f }; // Green
+    private final float[] zAxisColor = { 0.0f, 0.0f, 1.0f, 1.0f }; // Blue
 
     private FloatBuffer vertexBuffer;
     private ByteBuffer drawListBuffer;
+    private FloatBuffer axisVertexBuffer;
+    private ByteBuffer axisDrawListBuffer;
 
     private float[] projectionMatrix = new float[16];
     private float[] viewMatrix = new float[16];
@@ -145,18 +167,31 @@ public class GimbleFragment extends Fragment implements GLSurfaceView.Renderer {
         // Enable depth testing
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
 
-        // Prepare the vertex buffer.  This is done in the constructor
+        // Prepare the cube vertex buffer.
         ByteBuffer bb = ByteBuffer.allocateDirect(cubeVertices.length * 4);
         bb.order(ByteOrder.nativeOrder());
         vertexBuffer = bb.asFloatBuffer();
         vertexBuffer.put(cubeVertices);
         vertexBuffer.position(0);
 
-        // Prepare the draw list buffer.
+        // Prepare the cube draw list buffer.
         drawListBuffer = ByteBuffer.allocateDirect(drawOrder.length * 2);
         drawListBuffer.order(ByteOrder.nativeOrder());
         drawListBuffer.asShortBuffer().put(drawOrder);
         drawListBuffer.position(0);
+
+        // Prepare the axis vertex buffer.
+        ByteBuffer axisBB = ByteBuffer.allocateDirect(axisVertices.length * 4);
+        axisBB.order(ByteOrder.nativeOrder());
+        axisVertexBuffer = axisBB.asFloatBuffer();
+        axisVertexBuffer.put(axisVertices);
+        axisVertexBuffer.position(0);
+
+        // Prepare the axis draw list buffer.
+        axisDrawListBuffer = ByteBuffer.allocateDirect(axisDrawOrder.length * 2);
+        axisDrawListBuffer.order(ByteOrder.nativeOrder());
+        axisDrawListBuffer.asShortBuffer().put(axisDrawOrder);
+        axisDrawListBuffer.position(0);
     }
 
     @Override
@@ -174,15 +209,6 @@ public class GimbleFragment extends Fragment implements GLSurfaceView.Renderer {
         // Use the program.
         GLES20.glUseProgram(mProgram);
 
-        // Set the vertex data.
-        GLES20.glVertexAttribPointer(
-                mPositionHandle, 3, GLES20.GL_FLOAT, false,
-                3 * 4, vertexBuffer);
-        GLES20.glEnableVertexAttribArray(mPositionHandle);
-
-        // Set the color.
-        GLES20.glUniform4fv(mColorHandle, 1, cubeColor, 0);
-
         // Calculate the matrices.
         Matrix.setIdentityM(modelMatrix, 0);
         Matrix.rotateM(modelMatrix, 0, pitch, 1.0f, 0.0f, 0.0f); // Pitch
@@ -197,14 +223,57 @@ public class GimbleFragment extends Fragment implements GLSurfaceView.Renderer {
         Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, viewMatrix, 0);
         Matrix.multiplyMM(mvpMatrix, 0, mvpMatrix, 0, modelMatrix, 0);
 
+        // Draw the cube.
+        drawCube(mvpMatrix);
+        drawAxes(mvpMatrix);
+    }
+
+    private void drawCube(float[] matrix) {
+        // Set the vertex data for the cube.
+        GLES20.glVertexAttribPointer(
+                mPositionHandle, 3, GLES20.GL_FLOAT, false,
+                3 * 4, vertexBuffer);
+        GLES20.glEnableVertexAttribArray(mPositionHandle);
+
+        // Set the color for the cube.
+        GLES20.glUniform4fv(mColorHandle, 1, cubeColor, 0);
+
         // Set the transformation matrix.
-        GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mvpMatrix, 0);
+        GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, matrix, 0);
 
         // Draw the cube.
         GLES20.glDrawElements(
                 GLES20.GL_TRIANGLES, drawOrder.length,
                 GLES20.GL_UNSIGNED_SHORT, drawListBuffer);
 
+        // Disable vertex array
+        GLES20.glDisableVertexAttribArray(mPositionHandle);
+    }
+
+    private void drawAxes(float[] matrix) {
+        // Set the vertex data for the axes.
+        GLES20.glVertexAttribPointer(
+                mPositionHandle, 3, GLES20.GL_FLOAT, false,
+                3 * 4, axisVertexBuffer);
+        GLES20.glEnableVertexAttribArray(mPositionHandle);
+
+        // Draw the X axis.
+        GLES20.glUniform4fv(mColorHandle, 1, xAxisColor, 0);
+        GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, matrix, 0);
+        GLES20.glDrawElements(GLES20.GL_LINES, 2, GLES20.GL_UNSIGNED_SHORT, axisDrawListBuffer);
+
+        // Draw the Y axis.
+        GLES20.glUniform4fv(mColorHandle, 1, yAxisColor, 0);
+        GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, matrix, 0);
+        GLES20.glDrawElements(GLES20.GL_LINES, 2, GLES20.GL_UNSIGNED_SHORT, axisDrawListBuffer.position(4)); //start from the 4th position
+
+        // Draw the Z axis.
+        GLES20.glUniform4fv(mColorHandle, 1, zAxisColor, 0);
+        GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, matrix, 0);
+        GLES20.glDrawElements(GLES20.GL_LINES, 2, GLES20.GL_UNSIGNED_SHORT, axisDrawListBuffer.position(8)); //start from the 8th position
+
+        // Reset the position.
+        axisDrawListBuffer.position(0);
         // Disable vertex array
         GLES20.glDisableVertexAttribArray(mPositionHandle);
     }
@@ -249,3 +318,4 @@ public class GimbleFragment extends Fragment implements GLSurfaceView.Renderer {
         }
     }
 }
+

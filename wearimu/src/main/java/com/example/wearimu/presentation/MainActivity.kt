@@ -63,6 +63,19 @@ class MainActivity : ComponentActivity() {
     private var gyroData by mutableStateOf("Gyro: X=0.00, Y=0.00, Z=0.00")
     private var magData by mutableStateOf("Mag: X=0.00, Y=0.00, Z=0.00") // Add magnetometer data
 
+    // Filtered sensor data
+    private var filteredAccX by mutableStateOf(0.0f)
+    private var filteredAccY by mutableStateOf(0.0f)
+    private var filteredAccZ by mutableStateOf(0.0f)
+    private var filteredGyroX by mutableStateOf(0.0f)
+    private var filteredGyroY by mutableStateOf(0.0f)
+    private var filteredGyroZ by mutableStateOf(0.0f)
+    private var filteredMagX by mutableStateOf(0.0f)
+    private var filteredMagY by mutableStateOf(0.0f)
+    private var filteredMagZ by mutableStateOf(0.0f)
+
+    private val alpha = 0.2f // Adjust this value for the desired filtering effect
+
     private val sensorEventListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
             when (event.sensor.type) {
@@ -70,27 +83,44 @@ class MainActivity : ComponentActivity() {
                     val x = event.values[0]
                     val y = event.values[1]
                     val z = event.values[2]
-                    accData = "Acc: X=${String.format("%.2f", x)}, Y=${String.format("%.2f", y)}, Z=${String.format("%.2f", z)}"
+
+                    // Apply low-pass filter
+                    filteredAccX = alpha * x + (1 - alpha) * filteredAccX
+                    filteredAccY = alpha * y + (1 - alpha) * filteredAccY
+                    filteredAccZ = alpha * z + (1 - alpha) * filteredAccZ
+
+                    accData = "Acc: X=${String.format("%.2f", filteredAccX)}, Y=${String.format("%.2f", filteredAccY)}, Z=${String.format("%.2f", filteredAccZ)}"
                     if (isSendingData) {
-                        sendData("$x,$y,$z,acc")
+                        sendData("$filteredAccX,$filteredAccY,$filteredAccZ,acc")
                     }
                 }
                 Sensor.TYPE_GYROSCOPE -> {
                     val x = event.values[0]
                     val y = event.values[1]
                     val z = event.values[2]
-                    gyroData = "Gyro: X=${String.format("%.2f", x)}, Y=${String.format("%.2f", y)}, Z=${String.format("%.2f", z)}"
+
+                    // Apply low-pass filter
+                    filteredGyroX = alpha * x + (1 - alpha) * filteredGyroX
+                    filteredGyroY = alpha * y + (1 - alpha) * filteredGyroY
+                    filteredGyroZ = alpha * z + (1 - alpha) * filteredGyroZ
+
+                    gyroData = "Gyro: X=${String.format("%.2f", filteredGyroX)}, Y=${String.format("%.2f", filteredGyroY)}, Z=${String.format("%.2f", filteredGyroZ)}"
                     if (isSendingData) {
-                        sendData("$x,$y,$z,gyro")
+                        sendData("$filteredGyroX,$filteredGyroY,$filteredGyroZ,gyro")
                     }
                 }
                 Sensor.TYPE_MAGNETIC_FIELD -> { // Handle magnetometer data
                     val x = event.values[0]
                     val y = event.values[1]
                     val z = event.values[2]
-                    magData = "Mag: X=${String.format("%.2f", x)}, Y=${String.format("%.2f", y)}, Z=${String.format("%.2f", z)}"
+
+                    // Apply low-pass filter
+                    filteredMagX = alpha * x + (1 - alpha) * filteredMagX
+                    filteredMagY = alpha * y + (1 - alpha) * filteredMagY
+                    filteredMagZ = alpha * z + (1 - alpha) * filteredMagZ
+                    magData = "Mag: X=${String.format("%.2f", filteredMagX)}, Y=${String.format("%.2f", filteredMagY)}, Z=${String.format("%.2f", filteredMagZ)}"
                     if (isSendingData) {
-                        sendData("$x,$y,$z,mag")
+                        sendData("$filteredMagX,$filteredMagY,$filteredMagZ,mag")
                     }
                 }
             }
@@ -308,4 +338,3 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
