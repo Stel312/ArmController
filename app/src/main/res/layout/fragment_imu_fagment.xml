@@ -14,50 +14,100 @@
         android:text="Back to Scan"
         android:layout_marginBottom="16dp" />
 
-    <androidx.cardview.widget.CardView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp">
+        android:orientation="horizontal">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <androidx.cardview.widget.CardView
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="8dp">
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:layout_marginBottom="8dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Accelerometer"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:orientation="vertical"
+                android:padding="8dp">
 
-            <TextView
-                android:id="@+id/accXTextView"
-                android:layout_width="wrap_content"
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Accelerometer"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/accXTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="X: 0.000" />
+
+                <TextView
+                    android:id="@+id/accYTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Y: 0.000" />
+
+                <TextView
+                    android:id="@+id/accZTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Z: 0.000" />
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="X: 0.000" />
+                android:orientation="vertical"
+                android:padding="8dp">
 
-            <TextView
-                android:id="@+id/accYTextView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Y: 0.000" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Gyroscope"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/accZTextView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Z: 0.000" />
+                <TextView
+                    android:id="@+id/gyroXTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="X: 0.000" />
 
-        </LinearLayout>
+                <TextView
+                    android:id="@+id/gyroYTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Y: 0.000" />
 
-    </androidx.cardview.widget.CardView>
+                <TextView
+                    android:id="@+id/gyroZTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Z: 0.000" />
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
+
+    </LinearLayout>
 
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -67,36 +117,36 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Gyroscope"
+                android:text="Magnetometer"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/gyroXTextView"
+                android:id="@+id/magXTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="X: 0.000" />
 
             <TextView
-                android:id="@+id/gyroYTextView"
+                android:id="@+id/magYTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Y: 0.000" />
 
             <TextView
-                android:id="@+id/gyroZTextView"
+                android:id="@+id/magZTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Z: 0.000" />
 
         </LinearLayout>
-
     </androidx.cardview.widget.CardView>
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:layout_marginTop="3dp">
         <Button
             android:id="@+id/hide_gimbel"
             android:layout_width="wrap_content"

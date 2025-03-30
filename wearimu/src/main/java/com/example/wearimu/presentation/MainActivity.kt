@@ -8,8 +8,6 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -52,31 +50,49 @@ class MainActivity : ComponentActivity() {
     private lateinit var sensorManager: SensorManager
     private var accelerometer: Sensor? = null
     private var gyroscope: Sensor? = null
+    private var magnetometer: Sensor? = null  // Add magnetometer
     private var bluetoothSocket: BluetoothSocket? = null
-    private var outputStream: OutputStream? = null // Keep the output stream
+    private var outputStream: OutputStream? = null
     private val APP_UUID = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66")
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<Array<String>>
+    private var isBluetoothConnected by mutableStateOf(false)
+    private var isSendingData by mutableStateOf(false)
 
     // State to hold sensor data
     private var accData by mutableStateOf("Acc: X=0.00, Y=0.00, Z=0.00")
     private var gyroData by mutableStateOf("Gyro: X=0.00, Y=0.00, Z=0.00")
+    private var magData by mutableStateOf("Mag: X=0.00, Y=0.00, Z=0.00") // Add magnetometer data
 
     private val sensorEventListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
-            if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
-                val x = event.values[0]
-                val y = event.values[1]
-                val z = event.values[2]
-                accData = "Acc: X=${String.format("%.2f", x)}, Y=${String.format("%.2f", y)}, Z=${String.format("%.2f", z)}"
-                //sendSensorData("$x,$y,$z,acc") //remove from here
-                sendData("$x,$y,$z,acc") //use new sendData
-            } else if (event.sensor.type == Sensor.TYPE_GYROSCOPE) {
-                val x = event.values[0]
-                val y = event.values[1]
-                val z = event.values[2]
-                gyroData = "Gyro: X=${String.format("%.2f", x)}, Y=${String.format("%.2f", y)}, Z=${String.format("%.2f", z)}"
-                //sendSensorData("$x,$y,$z,gyro")  //remove from here
-                sendData("$x,$y,$z,gyro") //use new sendData
+            when (event.sensor.type) {
+                Sensor.TYPE_ACCELEROMETER -> {
+                    val x = event.values[0]
+                    val y = event.values[1]
+                    val z = event.values[2]
+                    accData = "Acc: X=${String.format("%.2f", x)}, Y=${String.format("%.2f", y)}, Z=${String.format("%.2f", z)}"
+                    if (isSendingData) {
+                        sendData("$x,$y,$z,acc")
+                    }
+                }
+                Sensor.TYPE_GYROSCOPE -> {
+                    val x = event.values[0]
+                    val y = event.values[1]
+                    val z = event.values[2]
+                    gyroData = "Gyro: X=${String.format("%.2f", x)}, Y=${String.format("%.2f", y)}, Z=${String.format("%.2f", z)}"
+                    if (isSendingData) {
+                        sendData("$x,$y,$z,gyro")
+                    }
+                }
+                Sensor.TYPE_MAGNETIC_FIELD -> { // Handle magnetometer data
+                    val x = event.values[0]
+                    val y = event.values[1]
+                    val z = event.values[2]
+                    magData = "Mag: X=${String.format("%.2f", x)}, Y=${String.format("%.2f", y)}, Z=${String.format("%.2f", z)}"
+                    if (isSendingData) {
+                        sendData("$x,$y,$z,mag")
+                    }
+                }
             }
         }
 
@@ -89,6 +105,7 @@ class MainActivity : ComponentActivity() {
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+        magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) // Get magnetometer
 
         requestPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
@@ -108,7 +125,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            WearApp(accData = accData, gyroData = gyroData)
+            WearApp(accData = accData, gyroData = gyroData, magData = magData, isConnected = isBluetoothConnected) // Pass magData
         }
     }
 
@@ -131,14 +148,21 @@ class MainActivity : ComponentActivity() {
                 sensorEventListener,
                 it,
                 SensorManager.SENSOR_DELAY_FASTEST
-            )  // Use fastest
+            )
         }
         gyroscope?.let {
             sensorManager.registerListener(
                 sensorEventListener,
                 it,
                 SensorManager.SENSOR_DELAY_FASTEST
-            ) // Use fastest
+            )
+        }
+        magnetometer?.let {  // Register magnetometer
+            sensorManager.registerListener(
+                sensorEventListener,
+                it,
+                SensorManager.SENSOR_DELAY_FASTEST
+            )
         }
     }
 
@@ -146,45 +170,86 @@ class MainActivity : ComponentActivity() {
         sensorManager.unregisterListener(sensorEventListener)
     }
 
-    private fun sendSensorData(data: String) { //remove this
-        GlobalScope.launch(Dispatchers.IO) {
-            try {
-                bluetoothSocket?.let {
-                    val outputStream: OutputStream = it.outputStream
-                    outputStream.write((data + "\n").toByteArray())
-                }
-            } catch (e: IOException) {
-                Log.e("MainActivity", "Error sending data: ${e.message}")
-            }
-        }
-    }
-
-    private fun sendData(data: String) { //new sendData
+    private fun sendData(data: String) {
         try {
             outputStream?.write((data + "\n").toByteArray())
         } catch (e: IOException) {
             Log.e("MainActivity", "Error sending data: ${e.message}")
+            GlobalScope.launch(Dispatchers.Main) {
+                isBluetoothConnected = false
+                isSendingData = false
+            }
+            startBluetoothServer()
         }
     }
 
     private fun startBluetoothServer() {
         if (!checkBluetoothPermissions()) return
+
         GlobalScope.launch(Dispatchers.IO) {
             val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-            try {
-                val serverSocket: BluetoothServerSocket =
-                    bluetoothAdapter.listenUsingRfcommWithServiceRecord("IMU_Data", APP_UUID)
-                bluetoothSocket = serverSocket.accept()
-                bluetoothSocket?.let{ //get outputStream
-                    outputStream = it.outputStream
-                }
-                withContext(Dispatchers.Main) {
-                    Log.d("MainActivity", "Bluetooth connection established.")
-                }
-                //serverSocket.close()  // Keep the server socket open
-            } catch (e: IOException) {
-                withContext(Dispatchers.Main) {
-                    Log.e("MainActivity", "Bluetooth server error: ${e.message}")
+            var serverSocket: BluetoothServerSocket? = null
+            while (true) {
+                try {
+                    serverSocket = bluetoothAdapter.listenUsingRfcommWithServiceRecord("IMU_Data", APP_UUID)
+                    withContext(Dispatchers.Main) {
+                        Log.d("MainActivity", "Server listening for connection...")
+                    }
+                    bluetoothSocket = serverSocket.accept()
+                    withContext(Dispatchers.Main) {
+                        Log.d("MainActivity", "Bluetooth connection established.")
+                        isBluetoothConnected = true
+                    }
+                    outputStream = bluetoothSocket?.outputStream
+                    registerSensors()
+                    isSendingData = true
+
+                    try {
+                        val inputStream = bluetoothSocket?.inputStream
+                        val buffer = ByteArray(1024)
+                        while (inputStream?.read(buffer) != -1) {
+                        }
+                        withContext(Dispatchers.Main) {
+                            Log.d("MainActivity", "Bluetooth disconnected.")
+                            isBluetoothConnected = false
+                            isSendingData = false
+                        }
+                        unregisterSensors()
+                        outputStream?.close()
+                        outputStream = null
+                        bluetoothSocket?.close()
+                        bluetoothSocket = null
+
+
+                    } catch (e: IOException) {
+                        withContext(Dispatchers.Main) {
+                            Log.e("MainActivity", "Bluetooth connection error: ${e.message}")
+                            isBluetoothConnected = false
+                            isSendingData = false
+                        }
+                        unregisterSensors()
+                        outputStream?.close()
+                        outputStream = null
+                        bluetoothSocket?.close()
+                        bluetoothSocket = null
+
+                    } finally {
+                        serverSocket?.close()
+                        withContext(Dispatchers.Main) {
+                            Log.d("MainActivity", "Restarting server to listen for new connection")
+                        }
+                    }
+
+                } catch (e: IOException) {
+                    withContext(Dispatchers.Main) {
+                        Log.e("MainActivity", "Bluetooth server error: ${e.message}")
+                    }
+                    try{
+                        serverSocket?.close()
+                    }catch(e: IOException){
+                        Log.e("MainActivity", "Error closing server socket: ${e.message}")
+                    }
+
                 }
             }
         }
@@ -202,7 +267,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun WearApp(accData: String, gyroData: String) {
+    fun WearApp(accData: String, gyroData: String, magData: String, isConnected: Boolean) { // Added magData and isConnected
         Scaffold(
             vignette = {
                 Vignette(vignettePosition = VignettePosition.Bottom)
@@ -220,7 +285,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colors.primary,
-                    text = "Sending IMU Data",
+                    text = if (isConnected) "Sending IMU Data" else "Disconnected",
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 // Display sensor data
@@ -234,7 +299,13 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colors.onPrimary,
                     textAlign = TextAlign.Center
                 )
+                Text( // Display magnetometer data
+                    text = magData,
+                    color = MaterialTheme.colors.onPrimary,
+                    textAlign = TextAlign.Center
+                )
             }
         }
     }
 }
+
