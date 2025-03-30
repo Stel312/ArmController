@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">My Application</string>
+    <string name="send_message">Send Message</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="go_to_imu_fragment">Go to IMU Fragment</string>
+    <string name="show_gimbel">Show Gimbel</string>
+    <string name="show_extra">Show Extra Data</string>
+    <string name="hide">Hide</string>
+</resources>

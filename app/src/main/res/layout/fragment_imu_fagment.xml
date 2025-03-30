@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    tools:context=".ImuFagment">
+
+    <Button
+        android:id="@+id/backToScanButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Back to Scan"
+        android:layout_marginBottom="16dp" />
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Accelerometer"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/accXTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="X: 0.000" />
+
+            <TextView
+                android:id="@+id/accYTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Y: 0.000" />
+
+            <TextView
+                android:id="@+id/accZTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Z: 0.000" />
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Gyroscope"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/gyroXTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="X: 0.000" />
+
+            <TextView
+                android:id="@+id/gyroYTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Y: 0.000" />
+
+            <TextView
+                android:id="@+id/gyroZTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Z: 0.000" />
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <Button
+            android:id="@+id/hide_gimbel"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_weight=".25"
+            android:text="@string/hide"
+            android:hyphenationFrequency="none"
+            android:breakStrategy="simple" />
+
+        <Button
+            android:id="@+id/show_gimbel"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="@string/show_gimbel"
+            android:hyphenationFrequency="none"
+            android:breakStrategy="simple" />
+
+        <Button
+            android:id="@+id/show_extra"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="@string/show_extra"
+            android:hyphenationFrequency="none"
+            android:breakStrategy="simple" />
+    </LinearLayout>
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/secondary_fragment_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+</LinearLayout>
