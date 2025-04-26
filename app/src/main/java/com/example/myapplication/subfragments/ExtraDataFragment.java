@@ -9,6 +9,10 @@ import android.widget.TextView;
 
 import com.example.myapplication.R;
 
+import org.joml.Vector3f;
+
+import java.util.Vector;
+
 /**
  * A simple {@link Fragment} subclass.
  * Use the {@link ExtraDataFragment#newInstance} factory method to
@@ -59,11 +63,11 @@ public class ExtraDataFragment extends Fragment {
         return view;
     }
 
-    public void setAccData(float x, float y, float z) {
+    public void setAccData(Vector3f accelerometer) {
         if (accXExtraTextView != null && accYExtraTextView != null && accZExtraTextView != null) {
-            accXExtraTextView.setText("X: " + String.format("%.3f", x));
-            accYExtraTextView.setText("Y: " + String.format("%.3f", y));
-            accZExtraTextView.setText("Z: " + String.format("%.3f", z));
+            accXExtraTextView.setText("X: " + String.format("%.3f", accelerometer.x));
+            accYExtraTextView.setText("Y: " + String.format("%.3f", accelerometer.y));
+            accZExtraTextView.setText("Z: " + String.format("%.3f", accelerometer.z));
         }
     }
 

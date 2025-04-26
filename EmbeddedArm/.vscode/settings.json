@@ -1,3 +1,11 @@
-{
-    "C_Cpp.errorSquiggles": "enabled"
+ {
+    "idf.espIdfPathWin": "C:\\Users\\Nathan\\esp\\v5.4.1\\esp-idf",
+    "idf.toolsPathWin": "C:\\Users\\Nathan\\.espressif",
+    "idf.pythonInstallPath": "C:\\Users\\Nathan\\.espressif\\tools\\idf-python\\3.11.2\\python.exe",
+    "files.associations": {
+        "unistd.h": "c",
+        "errno.h": "c",
+        "format": "c"
+    },
+    "idf.portWin": "COM3"
 }

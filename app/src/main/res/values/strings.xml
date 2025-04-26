@@ -1,10 +1,20 @@
 <resources>
     <string name="app_name">My Application</string>
     <string name="send_message">Send Message</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="go_to_imu_fragment">Go to IMU Fragment</string>
-    <string name="show_gimbel">Show Gimbel</string>
-    <string name="show_extra">Show Extra Data</string>
+    <string name="show_gimbel">GL Gimbel</string>
+    <string name="show_extra">Filtered Data</string>
+    <string name="raw_data">Raw Data</string>
     <string name="hide">Hide</string>
+
+
+    <string name="acc_x">Acc X: %1$.3f</string>
+    <string name="acc_y">Acc Y: %1$.3f</string>
+    <string name="acc_z">Acc Z: %1$.3f</string>
+    <string name="gyro_x">Gyro X: %1$.3f</string>
+    <string name="gyro_y">Gyro Y: %1$.3f</string>
+    <string name="gyro_z">Gyro Z: %1$.3f</string>
+    <string name="mag_x">Mag X: %1$.3f</string>
+    <string name="mag_y">Mag Y: %1$.3f</string>
+    <string name="mag_z">Mag Z: %1$.3f</string>
 </resources>

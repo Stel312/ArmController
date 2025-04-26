@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    tools:context=".ImuFagment">
+    tools:context=".ImuFragment">
 
     <Button
         android:id="@+id/backToScanButton"
@@ -14,133 +14,6 @@
         android:text="Back to Scan"
         android:layout_marginBottom="16dp" />
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-
-        <androidx.cardview.widget.CardView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="4dp"
-            android:layout_marginBottom="8dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="8dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Accelerometer"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/accXTextView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="X: 0.000" />
-
-                <TextView
-                    android:id="@+id/accYTextView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Y: 0.000" />
-
-                <TextView
-                    android:id="@+id/accZTextView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Z: 0.000" />
-
-            </LinearLayout>
-
-        </androidx.cardview.widget.CardView>
-
-        <androidx.cardview.widget.CardView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="4dp"
-            android:layout_marginBottom="8dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="8dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Gyroscope"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/gyroXTextView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="X: 0.000" />
-
-                <TextView
-                    android:id="@+id/gyroYTextView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Y: 0.000" />
-
-                <TextView
-                    android:id="@+id/gyroZTextView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Z: 0.000" />
-
-            </LinearLayout>
-
-        </androidx.cardview.widget.CardView>
-
-    </LinearLayout>
-
-    <androidx.cardview.widget.CardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="8dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Magnetometer"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/magXTextView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="X: 0.000" />
-
-            <TextView
-                android:id="@+id/magYTextView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Y: 0.000" />
-
-            <TextView
-                android:id="@+id/magZTextView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Z: 0.000" />
-
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -171,6 +44,15 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:text="@string/show_extra"
+            android:hyphenationFrequency="none"
+            android:breakStrategy="simple" />
+
+        <Button
+            android:id="@+id/raw_data"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="@string/raw_data"
             android:hyphenationFrequency="none"
             android:breakStrategy="simple" />
     </LinearLayout>
