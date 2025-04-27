@@ -1,0 +1,12 @@
+<resources>
+    <declare-styleable name="SelfCenteringJoystickView">
+        <attr name="exampleString" format="string" />
+        <attr name="exampleDimension" format="dimension" />
+        <attr name="exampleColor" format="color" />
+        <attr name="exampleDrawable" format="color|reference" />
+        <attr name="baseColor" format="color" />
+        <attr name="handleColor" format="color" />
+        <attr name="baseRadius" format="dimension" />
+        <attr name="handleRadius" format="dimension" />
+    </declare-styleable>
+</resources>

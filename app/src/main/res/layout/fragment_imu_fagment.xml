@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -12,53 +13,111 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Back to Scan"
+        android:textSize="14sp"
         android:layout_marginBottom="16dp" />
 
-
     <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="3dp">
-        <Button
-            android:id="@+id/hide_gimbel"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_weight=".25"
-            android:text="@string/hide"
-            android:hyphenationFrequency="none"
-            android:breakStrategy="simple" />
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
 
-        <Button
-            android:id="@+id/show_gimbel"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:text="@string/show_gimbel"
-            android:hyphenationFrequency="none"
-            android:breakStrategy="simple" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
 
-        <Button
-            android:id="@+id/show_extra"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:text="@string/show_extra"
-            android:hyphenationFrequency="none"
-            android:breakStrategy="simple" />
+            <Button
+                android:id="@+id/hide_gimbel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/hide"
+                android:textSize="12sp"
+                android:paddingVertical="10dp"
+                android:layout_marginEnd="0dp"
+                android:hyphenationFrequency="none"
+                android:breakStrategy="simple" />
 
-        <Button
-            android:id="@+id/raw_data"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
+            <Button
+                android:id="@+id/show_gimbel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/show_gimbel"
+                android:textSize="12sp"
+                android:paddingVertical="10dp"
+                android:layout_marginStart="0dp"
+                android:hyphenationFrequency="none"
+                android:breakStrategy="simple" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/show_extra"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/show_extra"
+                android:textSize="12sp"
+                android:paddingVertical="10dp"
+                android:layout_marginEnd="0dp"
+                android:layout_marginTop="0dp"
+                android:hyphenationFrequency="none"
+                android:breakStrategy="simple" />
+
+            <Button
+                android:id="@+id/raw_data"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/raw_data"
+                android:textSize="12sp"
+                android:paddingVertical="10dp"
+                android:layout_marginStart="0dp"
+                android:layout_marginTop="0dp"
+                android:hyphenationFrequency="none"
+                android:breakStrategy="simple" />
+        </LinearLayout>
+
+        <androidx.fragment.app.FragmentContainerView
+            android:id="@+id/secondary_fragment_container"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
             android:layout_weight="1"
-            android:text="@string/raw_data"
-            android:hyphenationFrequency="none"
-            android:breakStrategy="simple" />
+            android:layout_marginTop="0dp"/>
+
     </LinearLayout>
 
-    <androidx.fragment.app.FragmentContainerView
-        android:id="@+id/secondary_fragment_container"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <com.example.myapplication.view.SelfCenteringJoystickView
+            android:id="@+id/joystickView"
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:layout_marginBottom="16dp"
+            app:baseColor="#808080"
+            app:handleColor="#D3D3D3"
+            app:baseRadius="75dp"
+            app:handleRadius="45dp" />
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/sliderView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:valueFrom="0.0"
+            android:valueTo="100.0"
+            android:value="50.0" />
+
+    </LinearLayout>
+
 </LinearLayout>

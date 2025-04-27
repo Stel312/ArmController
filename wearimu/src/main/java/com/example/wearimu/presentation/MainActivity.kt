@@ -31,6 +31,7 @@ import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
 import java.io.IOException
+import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
 import android.bluetooth.BluetoothAdapter
@@ -42,6 +43,8 @@ import androidx.wear.compose.material.Vignette
 import androidx.wear.compose.material.VignettePosition
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -50,20 +53,20 @@ class MainActivity : ComponentActivity() {
     private lateinit var sensorManager: SensorManager
     private var accelerometer: Sensor? = null
     private var gyroscope: Sensor? = null
-    private var magnetometer: Sensor? = null  // Add magnetometer
+    private var magnetometer: Sensor? = null
     private var bluetoothSocket: BluetoothSocket? = null
     private var outputStream: OutputStream? = null
     private val APP_UUID = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66")
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<Array<String>>
     private var isBluetoothConnected by mutableStateOf(false)
     private var isSendingData by mutableStateOf(false)
+    private var serverSocket: BluetoothServerSocket? = null
+    private var connectionJob: Job? = null
 
-    // State to hold sensor data
     private var accData by mutableStateOf("Acc: X=0.00, Y=0.00, Z=0.00")
     private var gyroData by mutableStateOf("Gyro: X=0.00, Y=0.00, Z=0.00")
-    private var magData by mutableStateOf("Mag: X=0.00, Y=0.00, Z=0.00") // Add magnetometer data
+    private var magData by mutableStateOf("Mag: X=0.00, Y=0.00, Z=0.00")
 
-    // Filtered sensor data
     private var filteredAccX by mutableStateOf(0.0f)
     private var filteredAccY by mutableStateOf(0.0f)
     private var filteredAccZ by mutableStateOf(0.0f)
@@ -74,7 +77,8 @@ class MainActivity : ComponentActivity() {
     private var filteredMagY by mutableStateOf(0.0f)
     private var filteredMagZ by mutableStateOf(0.0f)
 
-    private val alpha = 0.2f // Adjust this value for the desired filtering effect
+    private val alpha = 0.2f
+    private val HEARTBEAT_INTERVAL = 5000L // Send a heartbeat every 5 seconds
 
     private val sensorEventListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
@@ -83,14 +87,11 @@ class MainActivity : ComponentActivity() {
                     val x = event.values[0]
                     val y = event.values[1]
                     val z = event.values[2]
-
-                    // Apply low-pass filter
                     filteredAccX = alpha * x + (1 - alpha) * filteredAccX
                     filteredAccY = alpha * y + (1 - alpha) * filteredAccY
                     filteredAccZ = alpha * z + (1 - alpha) * filteredAccZ
-
                     accData = "Acc: X=${String.format("%.2f", filteredAccX)}, Y=${String.format("%.2f", filteredAccY)}, Z=${String.format("%.2f", filteredAccZ)}"
-                    if (isSendingData) {
+                    if (isSendingData && isBluetoothConnected && outputStream != null) {
                         sendData("$filteredAccX,$filteredAccY,$filteredAccZ,acc")
                     }
                 }
@@ -98,28 +99,23 @@ class MainActivity : ComponentActivity() {
                     val x = event.values[0]
                     val y = event.values[1]
                     val z = event.values[2]
-
-                    // Apply low-pass filter
                     filteredGyroX = alpha * x + (1 - alpha) * filteredGyroX
                     filteredGyroY = alpha * y + (1 - alpha) * filteredGyroY
                     filteredGyroZ = alpha * z + (1 - alpha) * filteredGyroZ
-
                     gyroData = "Gyro: X=${String.format("%.2f", filteredGyroX)}, Y=${String.format("%.2f", filteredGyroY)}, Z=${String.format("%.2f", filteredGyroZ)}"
-                    if (isSendingData) {
+                    if (isSendingData && isBluetoothConnected && outputStream != null) {
                         sendData("$filteredGyroX,$filteredGyroY,$filteredGyroZ,gyro")
                     }
                 }
-                Sensor.TYPE_MAGNETIC_FIELD -> { // Handle magnetometer data
+                Sensor.TYPE_MAGNETIC_FIELD -> {
                     val x = event.values[0]
                     val y = event.values[1]
                     val z = event.values[2]
-
-                    // Apply low-pass filter
                     filteredMagX = alpha * x + (1 - alpha) * filteredMagX
                     filteredMagY = alpha * y + (1 - alpha) * filteredMagY
                     filteredMagZ = alpha * z + (1 - alpha) * filteredMagZ
                     magData = "Mag: X=${String.format("%.2f", filteredMagX)}, Y=${String.format("%.2f", filteredMagY)}, Z=${String.format("%.2f", filteredMagZ)}"
-                    if (isSendingData) {
+                    if (isSendingData && isBluetoothConnected && outputStream != null) {
                         sendData("$filteredMagX,$filteredMagY,$filteredMagZ,mag")
                     }
                 }
@@ -135,7 +131,7 @@ class MainActivity : ComponentActivity() {
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
-        magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) // Get magnetometer
+        magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
 
         requestPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
@@ -155,7 +151,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            WearApp(accData = accData, gyroData = gyroData, magData = magData, isConnected = isBluetoothConnected) // Pass magData
+            WearApp(accData = accData, gyroData = gyroData, magData = magData, isConnected = isBluetoothConnected)
         }
     }
 
@@ -164,7 +160,6 @@ class MainActivity : ComponentActivity() {
         val permissionsNotGranted = permissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
-
         if (permissionsNotGranted.isNotEmpty()) {
             requestPermissionLauncher.launch(permissionsNotGranted.toTypedArray())
             return false
@@ -174,25 +169,13 @@ class MainActivity : ComponentActivity() {
 
     private fun registerSensors() {
         accelerometer?.let {
-            sensorManager.registerListener(
-                sensorEventListener,
-                it,
-                SensorManager.SENSOR_DELAY_FASTEST
-            )
+            sensorManager.registerListener(sensorEventListener, it, SensorManager.SENSOR_DELAY_FASTEST)
         }
         gyroscope?.let {
-            sensorManager.registerListener(
-                sensorEventListener,
-                it,
-                SensorManager.SENSOR_DELAY_FASTEST
-            )
+            sensorManager.registerListener(sensorEventListener, it, SensorManager.SENSOR_DELAY_FASTEST)
         }
-        magnetometer?.let {  // Register magnetometer
-            sensorManager.registerListener(
-                sensorEventListener,
-                it,
-                SensorManager.SENSOR_DELAY_FASTEST
-            )
+        magnetometer?.let {
+            sensorManager.registerListener(sensorEventListener, it, SensorManager.SENSOR_DELAY_FASTEST)
         }
     }
 
@@ -205,103 +188,172 @@ class MainActivity : ComponentActivity() {
             outputStream?.write((data + "\n").toByteArray())
         } catch (e: IOException) {
             Log.e("MainActivity", "Error sending data: ${e.message}")
+            // It's crucial to update the UI on the main thread if a send fails,
+            // as it likely indicates a disconnection.
             GlobalScope.launch(Dispatchers.Main) {
                 isBluetoothConnected = false
                 isSendingData = false
             }
-            startBluetoothServer()
+            // Attempt to close the output stream if it's still open
+            try {
+                outputStream?.close()
+            } catch (closeException: IOException) {
+                Log.e("MainActivity", "Error closing output stream: ${closeException.message}")
+            }
+            outputStream = null
+            // Optionally, you might want to try and reconnect or restart the server here
+            // if the disconnection was unexpected.
         }
     }
 
     private fun startBluetoothServer() {
         if (!checkBluetoothPermissions()) return
 
-        GlobalScope.launch(Dispatchers.IO) {
+        connectionJob?.cancel()
+        connectionJob = GlobalScope.launch(Dispatchers.IO) {
             val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-            var serverSocket: BluetoothServerSocket? = null
-            while (true) {
+            var shouldContinueListening = true
+            while (shouldContinueListening) {
+                var currentServerSocket: BluetoothServerSocket? = null // Local variable for the current server socket
                 try {
-                    serverSocket = bluetoothAdapter.listenUsingRfcommWithServiceRecord("IMU_Data", APP_UUID)
-                    withContext(Dispatchers.Main) {
-                        Log.d("MainActivity", "Server listening for connection...")
-                    }
-                    bluetoothSocket = serverSocket.accept()
-                    withContext(Dispatchers.Main) {
-                        Log.d("MainActivity", "Bluetooth connection established.")
-                        isBluetoothConnected = true
-                    }
-                    outputStream = bluetoothSocket?.outputStream
-                    registerSensors()
-                    isSendingData = true
-
-                    try {
-                        val inputStream = bluetoothSocket?.inputStream
-                        val buffer = ByteArray(1024)
-                        while (inputStream?.read(buffer) != -1) {
-                        }
+                    if (serverSocket == null) {
+                        serverSocket = bluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord("IMU_Data", APP_UUID)
                         withContext(Dispatchers.Main) {
-                            Log.d("MainActivity", "Bluetooth disconnected.")
-                            isBluetoothConnected = false
-                            isSendingData = false
+                            Log.d("MainActivity", "Server listening for connection...")
                         }
-                        unregisterSensors()
-                        outputStream?.close()
-                        outputStream = null
-                        bluetoothSocket?.close()
-                        bluetoothSocket = null
-
-
+                    }
+                    currentServerSocket = serverSocket // Assign the potentially initialized serverSocket to the local variable
+                    val socket: BluetoothSocket? = try {
+                        currentServerSocket?.accept(2000) // Use the local variable here
                     } catch (e: IOException) {
-                        withContext(Dispatchers.Main) {
-                            Log.e("MainActivity", "Bluetooth connection error: ${e.message}")
-                            isBluetoothConnected = false
-                            isSendingData = false
-                        }
-                        unregisterSensors()
-                        outputStream?.close()
-                        outputStream = null
-                        bluetoothSocket?.close()
-                        bluetoothSocket = null
-
-                    } finally {
-                        serverSocket?.close()
-                        withContext(Dispatchers.Main) {
-                            Log.d("MainActivity", "Restarting server to listen for new connection")
+                        if (connectionJob?.isCancelled == true) {
+                            Log.d("MainActivity", "Server accept operation cancelled.")
+                            shouldContinueListening = false
+                            null
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                Log.e("MainActivity", "Bluetooth server accept error: ${e.message}")
+                                isBluetoothConnected = false
+                                isSendingData = false
+                            }
+                            delay(5000) // Wait a bit before trying to listen again
+                            null
                         }
                     }
 
-                } catch (e: IOException) {
-                    withContext(Dispatchers.Main) {
-                        Log.e("MainActivity", "Bluetooth server error: ${e.message}")
-                    }
-                    try{
-                        serverSocket?.close()
-                    }catch(e: IOException){
-                        Log.e("MainActivity", "Error closing server socket: ${e.message}")
-                    }
+                    socket?.let { connectedSocket ->
+                        bluetoothSocket = connectedSocket
+                        withContext(Dispatchers.Main) {
+                            Log.d("MainActivity", "Bluetooth connection established.")
+                            isBluetoothConnected = true
+                        }
+                        outputStream = connectedSocket.outputStream
+                        registerSensors()
+                        isSendingData = true
 
+                        // Start sending heartbeat
+                        //val heartbeatJob = launch { sendHeartbeat() }
+
+                        try {
+                            val inputStream: InputStream = connectedSocket.inputStream
+                            val buffer = ByteArray(1024)
+                            var bytesRead = -1 // Initialize with a value indicating no bytes read yet
+                            while (connectedSocket.isConnected && inputStream.read(buffer).also { bytesRead = it } != -1) {
+                                if (bytesRead > 0) {
+                                    // Process any data received from the client here if needed
+                                    val receivedMessage = String(buffer, 0, bytesRead, Charsets.UTF_8).trim()
+                                    Log.d("MainActivity", "Received from client: $receivedMessage")
+                                    // You might want to respond to the client based on received messages
+                                }
+                            }
+                            withContext(Dispatchers.Main) {
+                                Log.d("MainActivity", "Bluetooth disconnected by client.")
+                                isBluetoothConnected = false
+                                isSendingData = false
+                            }
+                        } catch (e: IOException) {
+                            withContext(Dispatchers.Main) {
+                                Log.e("MainActivity", "Bluetooth connection error (read/write): ${e.message}")
+                                isBluetoothConnected = false
+                                isSendingData = false
+                            }
+                        } finally {
+                            //heartbeatJob.cancel() // Stop sending heartbeat
+                            unregisterSensors()
+                            closeSocketAndStreams()
+                        }
+                    }
+                } finally {
+                    if (connectionJob?.isCancelled == true) {
+                        closeServerSocket()
+                        shouldContinueListening = false
+                    }
                 }
             }
+            closeServerSocket()
+            withContext(Dispatchers.Main) {
+                Log.d("MainActivity", "Bluetooth server stopped.")
+            }
+        }
+    }
+
+    private fun sendHeartbeat() = GlobalScope.launch(Dispatchers.IO) {
+        while (isBluetoothConnected && outputStream != null) {
+            try {
+                outputStream?.write("heartbeat\n".toByteArray())
+                outputStream?.flush()
+                delay(HEARTBEAT_INTERVAL)
+            } catch (e: IOException) {
+                Log.e("MainActivity", "Error sending heartbeat: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    isBluetoothConnected = false
+                    isSendingData = false
+                }
+                closeSocketAndStreams()
+                break
+            }
+        }
+    }
+
+    private fun closeSocketAndStreams() {
+        try {
+            bluetoothSocket?.close()
+        } catch (e: IOException) {
+            Log.e("MainActivity", "Error closing bluetooth socket: ${e.message}")
+        } finally {
+            bluetoothSocket = null
+        }
+        try {
+            outputStream?.close()
+        } catch (e: IOException) {
+            Log.e("MainActivity", "Error closing output stream: ${e.message}")
+        } finally {
+            outputStream = null
+        }
+    }
+
+    private fun closeServerSocket() {
+        try {
+            serverSocket?.close()
+        } catch (e: IOException) {
+            Log.e("MainActivity", "Error closing server socket: ${e.message}")
+        } finally {
+            serverSocket = null
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         unregisterSensors()
-        try {
-            bluetoothSocket?.close()
-            outputStream?.close()
-        } catch (e: IOException) {
-            Log.e("MainActivity", "Error closing socket: ${e.message}")
-        }
+        connectionJob?.cancel()
+        closeSocketAndStreams()
+        closeServerSocket()
     }
 
     @Composable
-    fun WearApp(accData: String, gyroData: String, magData: String, isConnected: Boolean) { // Added magData and isConnected
+    fun WearApp(accData: String, gyroData: String, magData: String, isConnected: Boolean) {
         Scaffold(
-            vignette = {
-                Vignette(vignettePosition = VignettePosition.Bottom)
-            }
+            vignette = { Vignette(vignettePosition = VignettePosition.Bottom) }
         ) {
             Column(
                 modifier = Modifier
@@ -318,7 +370,6 @@ class MainActivity : ComponentActivity() {
                     text = if (isConnected) "Sending IMU Data" else "Disconnected",
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                // Display sensor data
                 Text(
                     text = accData,
                     color = MaterialTheme.colors.onPrimary,
@@ -329,7 +380,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colors.onPrimary,
                     textAlign = TextAlign.Center
                 )
-                Text( // Display magnetometer data
+                Text(
                     text = magData,
                     color = MaterialTheme.colors.onPrimary,
                     textAlign = TextAlign.Center

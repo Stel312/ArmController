@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -8,17 +8,13 @@
     tools:context=".subfragments.RawDataFragment">
 
     <LinearLayout
-        android:id="@+id/sensorDataLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:weightSum="2">
+        android:orientation="vertical">
 
         <androidx.cardview.widget.CardView
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="8dp"
             android:layout_marginBottom="16dp">
 
             <LinearLayout
@@ -60,10 +56,8 @@
         </androidx.cardview.widget.CardView>
 
         <androidx.cardview.widget.CardView
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
             android:layout_marginBottom="16dp">
 
             <LinearLayout
@@ -104,46 +98,46 @@
 
         </androidx.cardview.widget.CardView>
 
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Magnetometer"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/magXTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="X: 0.000"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/magYTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Y: 0.000"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/magZTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Z: 0.000"
+                    android:textSize="16sp" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
     </LinearLayout>
 
-    <androidx.cardview.widget.CardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Magnetometer"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/magXTextView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="X: 0.000"
-                android:textSize="16sp" />
-
-            <TextView
-                android:id="@+id/magYTextView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Y: 0.000"
-                android:textSize="16sp" />
-
-            <TextView
-                android:id="@+id/magZTextView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Z: 0.000"
-                android:textSize="16sp" />
-
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
-
-</LinearLayout>
+</ScrollView>
