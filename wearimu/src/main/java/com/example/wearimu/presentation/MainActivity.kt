@@ -54,6 +54,8 @@ class MainActivity : ComponentActivity() {
     private var accelerometer: Sensor? = null
     private var gyroscope: Sensor? = null
     private var magnetometer: Sensor? = null
+    private var linearAcceleration: Sensor? = null
+    private var roationVector: Sensor? = null
     private var bluetoothSocket: BluetoothSocket? = null
     private var outputStream: OutputStream? = null
     private val APP_UUID = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66")
@@ -92,7 +94,7 @@ class MainActivity : ComponentActivity() {
                     filteredAccZ = alpha * z + (1 - alpha) * filteredAccZ
                     accData = "Acc: X=${String.format("%.2f", filteredAccX)}, Y=${String.format("%.2f", filteredAccY)}, Z=${String.format("%.2f", filteredAccZ)}"
                     if (isSendingData && isBluetoothConnected && outputStream != null) {
-                        sendData("$filteredAccX,$filteredAccY,$filteredAccZ,acc")
+                        sendData("acc,$filteredAccX,$filteredAccY,$filteredAccZ")
                     }
                 }
                 Sensor.TYPE_GYROSCOPE -> {
@@ -104,7 +106,7 @@ class MainActivity : ComponentActivity() {
                     filteredGyroZ = alpha * z + (1 - alpha) * filteredGyroZ
                     gyroData = "Gyro: X=${String.format("%.2f", filteredGyroX)}, Y=${String.format("%.2f", filteredGyroY)}, Z=${String.format("%.2f", filteredGyroZ)}"
                     if (isSendingData && isBluetoothConnected && outputStream != null) {
-                        sendData("$filteredGyroX,$filteredGyroY,$filteredGyroZ,gyro")
+                        sendData("gyro,$filteredGyroX,$filteredGyroY,$filteredGyroZ")
                     }
                 }
                 Sensor.TYPE_MAGNETIC_FIELD -> {
@@ -116,7 +118,26 @@ class MainActivity : ComponentActivity() {
                     filteredMagZ = alpha * z + (1 - alpha) * filteredMagZ
                     magData = "Mag: X=${String.format("%.2f", filteredMagX)}, Y=${String.format("%.2f", filteredMagY)}, Z=${String.format("%.2f", filteredMagZ)}"
                     if (isSendingData && isBluetoothConnected && outputStream != null) {
-                        sendData("$filteredMagX,$filteredMagY,$filteredMagZ,mag")
+                        sendData("mag,$filteredMagX,$filteredMagY,$filteredMagZ")
+                    }
+                }
+                Sensor.TYPE_ROTATION_VECTOR -> {
+                    // Handle rotation vector sensor data if needed
+                    val x = event.values[0]
+                    val y = event.values[1]
+                    val z = event.values[2]
+                    val w = event.values[3] // Corrected: Rotation vector has 4 values
+                    if (isSendingData && isBluetoothConnected && outputStream != null) {
+                        sendData("rotation,$x,$y,$z,$w")
+                    }
+                }
+                Sensor.TYPE_LINEAR_ACCELERATION -> {
+                    // Handle linear acceleration sensor data if needed
+                    val x = event.values[0]
+                    val y = event.values[1]
+                    val z = event.values[2]
+                    if (isSendingData && isBluetoothConnected && outputStream != null) {
+                        sendData("linear,$x,$y,$z")
                     }
                 }
             }
@@ -132,7 +153,8 @@ class MainActivity : ComponentActivity() {
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
         magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
-
+        linearAcceleration = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
+        roationVector = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
         requestPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { permissions ->
@@ -168,13 +190,19 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun registerSensors() {
-        accelerometer?.let {
+       /* accelerometer?.let {
             sensorManager.registerListener(sensorEventListener, it, SensorManager.SENSOR_DELAY_FASTEST)
         }
         gyroscope?.let {
             sensorManager.registerListener(sensorEventListener, it, SensorManager.SENSOR_DELAY_FASTEST)
         }
         magnetometer?.let {
+            sensorManager.registerListener(sensorEventListener, it, SensorManager.SENSOR_DELAY_FASTEST)
+        }*/
+        linearAcceleration?.let {
+            sensorManager.registerListener(sensorEventListener, it, SensorManager.SENSOR_DELAY_FASTEST)
+        }
+        roationVector?.let {
             sensorManager.registerListener(sensorEventListener, it, SensorManager.SENSOR_DELAY_FASTEST)
         }
     }
@@ -205,6 +233,7 @@ class MainActivity : ComponentActivity() {
             // if the disconnection was unexpected.
         }
     }
+
 
     private fun startBluetoothServer() {
         if (!checkBluetoothPermissions()) return
@@ -293,24 +322,6 @@ class MainActivity : ComponentActivity() {
             closeServerSocket()
             withContext(Dispatchers.Main) {
                 Log.d("MainActivity", "Bluetooth server stopped.")
-            }
-        }
-    }
-
-    private fun sendHeartbeat() = GlobalScope.launch(Dispatchers.IO) {
-        while (isBluetoothConnected && outputStream != null) {
-            try {
-                outputStream?.write("heartbeat\n".toByteArray())
-                outputStream?.flush()
-                delay(HEARTBEAT_INTERVAL)
-            } catch (e: IOException) {
-                Log.e("MainActivity", "Error sending heartbeat: ${e.message}")
-                withContext(Dispatchers.Main) {
-                    isBluetoothConnected = false
-                    isSendingData = false
-                }
-                closeSocketAndStreams()
-                break
             }
         }
     }

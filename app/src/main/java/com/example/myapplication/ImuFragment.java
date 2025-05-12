@@ -27,6 +27,7 @@ import com.example.myapplication.subfragments.ExtraDataFragment;
 import com.example.myapplication.subfragments.GimbleFragment;
 import com.example.myapplication.subfragments.RawDataFragment;
 
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.io.BufferedReader;
@@ -43,12 +44,16 @@ public class ImuFragment extends Fragment {
     private BluetoothSocket bluetoothSocket;
     private Handler mainHandler;
     private boolean isExtraDataFragmentActive = false;
+
     private boolean isConnected = false;
     private String deviceAddress;
     private OutputStream outputStream;
     private final Vector3f accelerometer = new Vector3f();
     private final Vector3f gyroscope = new Vector3f();
     private final Vector3f magnetometer = new Vector3f();
+    private final Quaternionf rotationVector = new Quaternionf();
+    private final Vector3f linearAcceleration = new Vector3f();
+
     private final ImuSensorFusion sensorFusion = new ImuSensorFusion();
     private Context context; // To check if the fragment is attached
 
@@ -197,12 +202,12 @@ public class ImuFragment extends Fragment {
     private void processImuData(String data) {
         if (isAdded() && getActivity() != null) {
             String[] values = data.split(",");
-            if (values.length == 4) { // Ensure we have all the expected data
+            if (values.length >= 4) { // Ensure we have all the expected data
                 try {
-                    float x = Float.parseFloat(values[0]);
-                    float y = Float.parseFloat(values[1]);
-                    float z = Float.parseFloat(values[2]);
-                    String type = values[3];
+                    float x = Float.parseFloat(values[1]);
+                    float y = Float.parseFloat(values[2]);
+                    float z = Float.parseFloat(values[3]);
+                    String type = values[0];
 
                     switch (type) {
                         case "acc":
@@ -213,6 +218,12 @@ public class ImuFragment extends Fragment {
                             break;
                         case "mag":  // Handle magnetometer data if available in the future
                             magnetometer.set(x, y, z);
+                            break;
+                        case "linear":
+                            linearAcceleration.set(x, y, z);
+                            break;
+                        case "rotation":
+                            rotationVector.set(x, y, z, Float.parseFloat(values[4]));
                             break;
                     }
 
@@ -235,11 +246,32 @@ public class ImuFragment extends Fragment {
                                 }
                                 Fragment extraFragment = fm.findFragmentByTag(SecondaryFragment.EXTRA.name());
                                 if (extraFragment instanceof ExtraDataFragment) {
-                                    ((ExtraDataFragment) extraFragment).setGimbalData(eulerAngles.y, eulerAngles.z, eulerAngles.x); // Adjust order if needed
+                                    Vector3f eulerAnglesXYZ = new Vector3f();
+                                    rotationVector.getEulerAnglesXYZ(eulerAnglesXYZ);
+                                    float pitchRad = eulerAnglesXYZ.x();
+                                    float yawRad = eulerAnglesXYZ.y();
+                                    float rollRad = eulerAnglesXYZ.z();
+                                    float pitchDeg = (float) Math.toDegrees(pitchRad);
+                                    float yawDeg = (float) Math.toDegrees(yawRad);
+                                    float rollDeg = (float) Math.toDegrees(rollRad);
+
+                                    ((ExtraDataFragment) extraFragment).setGimbalData(pitchDeg, yawDeg, rollDeg);
+                                    ((ExtraDataFragment) extraFragment).setAccData(linearAcceleration);
                                 }
                                 Fragment gimbalFragment = fm.findFragmentByTag(SecondaryFragment.GIMBLE.name());
                                 if (gimbalFragment instanceof GimbleFragment) {
-                                    ((GimbleFragment) gimbalFragment).setRotation(eulerAngles.y, eulerAngles.z, eulerAngles.x); // Adjust order if needed
+                                    // Method 1: Using getEulerAnglesXYZ()
+                                    Vector3f eulerAnglesXYZ = new Vector3f();
+                                    rotationVector.getEulerAnglesXYZ(eulerAnglesXYZ);
+                                    float pitchRad = eulerAnglesXYZ.x();
+                                    float yawRad = eulerAnglesXYZ.y();
+                                    float rollRad = eulerAnglesXYZ.z();
+
+                                    float pitchDeg = (float) Math.toDegrees(pitchRad);
+                                    float yawDeg = (float) Math.toDegrees(yawRad);
+                                    float rollDeg = (float) Math.toDegrees(rollRad);
+
+                                    ((GimbleFragment) gimbalFragment).setRotation(pitchDeg, yawDeg, rollDeg); // Adjust order if needed
                                 }
                             });
                         }
