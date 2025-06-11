@@ -6,21 +6,14 @@
 .vscode
 ./build
 
-# PlatformIO build environments
+# Build and temporary files
 .pio/
-
-# PlatformIO compiled firmware
-.pioenvs/
-
-# PlatformIO project configuration (if not using platformio.ini for version control)
-# You might want to keep platformio.ini under version control, but if not:
-# .pioinit
-# pio_cache/
-
-# PlatformIO generated files
-*.pio
-
-# VS Code specific PlatformIO files (if applicable)
-.vscode/*.pio
-.vscode/platformio-debug-config.json
+.vscode/
 build/
+compile_commands.json
+sdkconfig
+*.old
+
+# PlatformIO specific
+.pio/build/
+platformio.ini
