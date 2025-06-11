@@ -13,6 +13,10 @@ import androidx.fragment.app.Fragment;
 
 import com.example.myapplication.R;
 
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
+import org.joml.Matrix4f;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -27,9 +31,8 @@ import javax.microedition.khronos.opengles.GL10;
  */
 public class GimbleFragment extends Fragment implements GLSurfaceView.Renderer {
     private GLSurfaceView glSurfaceView;
-    private float pitch = 0;
-    private float roll = 0;
-    private float yaw = 0;
+    private Vector3f rotation = new Vector3f(0, 0, 0);
+    private Quaternionf quaternionRotation = new Quaternionf();
 
     // Vertex and fragment shaders
     private final String vertexShaderCode =
@@ -92,16 +95,21 @@ public class GimbleFragment extends Fragment implements GLSurfaceView.Renderer {
     private final float[] xAxisColor = { 1.0f, 0.0f, 0.0f, 1.0f }; // Red
     private final float[] yAxisColor = { 0.0f, 1.0f, 0.0f, 1.0f }; // Green
     private final float[] zAxisColor = { 0.0f, 0.0f, 1.0f, 1.0f }; // Blue
+    private final float[] accelerationColor = { 0.0f, 1.0f, 1.0f, 1.0f }; // Cyan
 
     private FloatBuffer vertexBuffer;
     private ByteBuffer drawListBuffer;
     private FloatBuffer axisVertexBuffer;
     private ByteBuffer axisDrawListBuffer;
+    private FloatBuffer accelerationVertexBuffer; // Buffer for acceleration vector
+    private short[] accelerationDrawOrder = {0, 1};  // Draw a line
 
     private float[] projectionMatrix = new float[16];
     private float[] viewMatrix = new float[16];
     private float[] modelMatrix = new float[16];
     private float[] mvpMatrix = new float[16];
+
+    private Vector3f linearAcceleration = new Vector3f(0, 0, 0); // Add to store acceleration
 
     public GimbleFragment() {
         // Required empty public constructor
@@ -127,24 +135,40 @@ public class GimbleFragment extends Fragment implements GLSurfaceView.Renderer {
         View view = inflater.inflate(R.layout.fragment_gimble, container, false);
 
         // Initialize GLSurfaceView
-        glSurfaceView = view.findViewById(R.id.gl_surface_view_gimble); // Make sure to use the ID from fragment_gimble.xml
+        glSurfaceView = view.findViewById(R.id.gl_surface_view_gimble);
         if (glSurfaceView != null) {
-            glSurfaceView.setEGLContextClientVersion(2); // Use OpenGL ES 2.0
-            glSurfaceView.setRenderer(this); // Use the fragment as the renderer.
-            glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY); // Keep rendering
+            glSurfaceView.setEGLContextClientVersion(2);
+            glSurfaceView.setRenderer(this);
+            glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
         }
         return view;
     }
 
-    public void setRotation(float pitch, float roll, float yaw) {
-        this.pitch = pitch;
-        this.roll = roll;
-        this.yaw = yaw;
-        // Request a render of the scene.
+    public void setRotation(Vector3f rotation) {
+        this.rotation = rotation;
+        // Convert Euler angles to quaternion
+        quaternionRotation.rotationXYZ(
+                (float) Math.toRadians(rotation.x),
+                (float) Math.toRadians(rotation.y),
+                (float) Math.toRadians(rotation.z));
         if (glSurfaceView != null){
             glSurfaceView.requestRender();
         }
+    }
 
+    // New setRotation method that takes a Quaternionf
+    public void setRotation(Quaternionf quaternion) {
+        this.quaternionRotation = quaternion;
+        if (glSurfaceView != null) {
+            glSurfaceView.requestRender();
+        }
+    }
+
+    public void setLinearAcceleration(Vector3f acceleration) {
+        this.linearAcceleration = acceleration;
+        if (glSurfaceView != null) {
+            glSurfaceView.requestRender();
+        }
     }
 
     @Override
@@ -192,6 +216,11 @@ public class GimbleFragment extends Fragment implements GLSurfaceView.Renderer {
         axisDrawListBuffer.order(ByteOrder.nativeOrder());
         axisDrawListBuffer.asShortBuffer().put(axisDrawOrder);
         axisDrawListBuffer.position(0);
+
+        // Prepare the acceleration vertex buffer
+        accelerationVertexBuffer = ByteBuffer.allocateDirect(2 * 3 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer(); // 2 vertices, 3 components each, 4 bytes per float
+        accelerationVertexBuffer.position(0);
+
     }
 
     @Override
@@ -211,9 +240,10 @@ public class GimbleFragment extends Fragment implements GLSurfaceView.Renderer {
 
         // Calculate the matrices.
         Matrix.setIdentityM(modelMatrix, 0);
-        Matrix.rotateM(modelMatrix, 0, pitch, 1.0f, 0.0f, 0.0f); // Pitch
-        Matrix.rotateM(modelMatrix, 0, roll, 0.0f, 1.0f, 0.0f);  // Roll
-        Matrix.rotateM(modelMatrix, 0, yaw, 0.0f, 0.0f, 1.0f);   // Yaw
+        // Apply the quaternion rotation
+        Matrix4f tempMatrix = new Matrix4f();
+        quaternionRotation.get(tempMatrix);
+        tempMatrix.get(modelMatrix);
 
         Matrix.setLookAtM(viewMatrix, 0,
                 0, 0, -3,
@@ -226,6 +256,7 @@ public class GimbleFragment extends Fragment implements GLSurfaceView.Renderer {
         // Draw the cube.
         drawCube(mvpMatrix);
         drawAxes(mvpMatrix);
+        drawAccelerationVector(mvpMatrix); //draw the acceleration vector
     }
 
     private void drawCube(float[] matrix) {
@@ -265,15 +296,45 @@ public class GimbleFragment extends Fragment implements GLSurfaceView.Renderer {
         // Draw the Y axis.
         GLES20.glUniform4fv(mColorHandle, 1, yAxisColor, 0);
         GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, matrix, 0);
-        GLES20.glDrawElements(GLES20.GL_LINES, 2, GLES20.GL_UNSIGNED_SHORT, axisDrawListBuffer.position(4)); //start from the 4th position
+        GLES20.glDrawElements(GLES20.GL_LINES, 2, GLES20.GL_UNSIGNED_SHORT, axisDrawListBuffer.position(4));
 
         // Draw the Z axis.
         GLES20.glUniform4fv(mColorHandle, 1, zAxisColor, 0);
         GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, matrix, 0);
-        GLES20.glDrawElements(GLES20.GL_LINES, 2, GLES20.GL_UNSIGNED_SHORT, axisDrawListBuffer.position(8)); //start from the 8th position
+        GLES20.glDrawElements(GLES20.GL_LINES, 2, GLES20.GL_UNSIGNED_SHORT, axisDrawListBuffer.position(8));
 
         // Reset the position.
         axisDrawListBuffer.position(0);
+        // Disable vertex array
+        GLES20.glDisableVertexAttribArray(mPositionHandle);
+    }
+
+    private void drawAccelerationVector(float[] matrix) {
+        // Prepare the acceleration vector data.
+        float[] accelerationVector = {
+                0.0f, 0.0f, 0.0f,
+                linearAcceleration.x, linearAcceleration.y, linearAcceleration.z
+        };
+
+        accelerationVertexBuffer.clear();
+        accelerationVertexBuffer.put(accelerationVector);
+        accelerationVertexBuffer.position(0);
+
+        // Set the vertex data for the acceleration vector.
+        GLES20.glVertexAttribPointer(
+                mPositionHandle, 3, GLES20.GL_FLOAT, false,
+                3 * 4, accelerationVertexBuffer);
+        GLES20.glEnableVertexAttribArray(mPositionHandle);
+
+        // Set the color for the acceleration vector.
+        GLES20.glUniform4fv(mColorHandle, 1, accelerationColor, 0);
+
+        // Set the transformation matrix.
+        GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, matrix, 0);
+
+        // Draw the acceleration vector.
+        GLES20.glDrawElements(GLES20.GL_LINES, accelerationDrawOrder.length, GLES20.GL_UNSIGNED_SHORT, axisDrawListBuffer);
+
         // Disable vertex array
         GLES20.glDisableVertexAttribArray(mPositionHandle);
     }

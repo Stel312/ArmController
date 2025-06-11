@@ -25,7 +25,6 @@ public class ExtraDataFragment extends Fragment {
 
 
     public ExtraDataFragment() {
-        // Required empty public constructor
     }
 
 
@@ -63,7 +62,7 @@ public class ExtraDataFragment extends Fragment {
         return view;
     }
 
-    public void setAccData(Vector3f accelerometer) {
+    public void setLinearAcceleration(Vector3f accelerometer) {
         if (accXExtraTextView != null && accYExtraTextView != null && accZExtraTextView != null) {
             accXExtraTextView.setText("X: " + String.format("%.3f", accelerometer.x));
             accYExtraTextView.setText("Y: " + String.format("%.3f", accelerometer.y));

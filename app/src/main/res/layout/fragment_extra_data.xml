@@ -21,7 +21,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Accelerometer"
+                android:text="@string/accelerometer"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -62,7 +62,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Gimbal"
+                android:text="@string/gimbal"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+        android:id="@+id/nav_hide_display"
+        android:title="Hide Display" />
+        <item
+            android:id="@+id/nav_show_gimbal"
+            android:title="Show Gimbal" />
+        <item
+            android:id="@+id/nav_show_raw"
+            android:title="Show Raw Data" />
+        <item
+            android:id="@+id/nav_show_extra"
+            android:title="Show Extra Data" />
+    </group>
+</menu>

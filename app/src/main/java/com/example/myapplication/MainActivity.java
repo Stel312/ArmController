@@ -4,6 +4,8 @@ import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentTransaction;
 
+import com.example.myapplication.mainfragments.ScanFragment;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "PhoneMainActivity";

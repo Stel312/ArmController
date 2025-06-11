@@ -2,10 +2,11 @@
     <string name="app_name">My Application</string>
     <string name="send_message">Send Message</string>
     <string name="go_to_imu_fragment">Go to IMU Fragment</string>
-    <string name="show_gimbel">GL Gimbel</string>
+    <string name="show_gimbal">GL Gimbal</string>
     <string name="show_extra">Filtered Data</string>
     <string name="raw_data">Raw Data</string>
     <string name="hide">Hide</string>
+    <string name="show">Show</string>
 
 
     <string name="acc_x">Acc X: %1$.3f</string>
@@ -17,4 +18,9 @@
     <string name="mag_x">Mag X: %1$.3f</string>
     <string name="mag_y">Mag Y: %1$.3f</string>
     <string name="mag_z">Mag Z: %1$.3f</string>
+    <string name="accelerometer">Accelerometer</string>
+    <string name="gimbal">Gimbal</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="disconnect">Disconnect</string>
 </resources>

@@ -6,4 +6,8 @@
     <color name="light_blue_600">#FF039BE5</color>
     <color name="gray_400">#FFBDBDBD</color>
     <color name="gray_600">#FF757575</color>
+    <color name="header_text_color">#FFFF0000</color>
+    <color name="card_text_color">#FF00FCFF</color>
+    <color name="header_background_color">#FF808080</color>
+    <color name="card_background">#FF303030</color>
 </resources>
