@@ -23,4 +23,6 @@
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
     <string name="disconnect">Disconnect</string>
+    <string name="imu_app_navigation">IMU App Navigation</string>
+    <string name="connected_none">Connected: None</string>
 </resources>
