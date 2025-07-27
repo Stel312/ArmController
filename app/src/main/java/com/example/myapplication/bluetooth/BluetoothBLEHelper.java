@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.UUID;
 
-public class BluetoothHelper {
+public class BluetoothBLEHelper {
 
     private static final String TAG = "BluetoothHelper";
 
@@ -51,7 +51,7 @@ public class BluetoothHelper {
     private BleScanCallback bleScanCallback; // Callback for BLE scan results
     private boolean isBleScanning = false;
 
-    public BluetoothHelper(Context context, BluetoothAdapter bluetoothAdapter) {
+    public BluetoothBLEHelper(Context context, BluetoothAdapter bluetoothAdapter) {
         this.context = context;
         this.bluetoothAdapter = bluetoothAdapter;
         if (bluetoothAdapter != null) {
@@ -117,6 +117,7 @@ public class BluetoothHelper {
             return;
         }
         gatt.disconnect();
+        closeGatt();
     }
 
     public void closeGatt() {

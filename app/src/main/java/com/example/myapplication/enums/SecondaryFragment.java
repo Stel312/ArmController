@@ -2,9 +2,9 @@ package com.example.myapplication.enums;
 
 import androidx.fragment.app.Fragment;
 
-import com.example.myapplication.subfragments.ExtraDataFragment;
-import com.example.myapplication.subfragments.GimbleFragment;
-import com.example.myapplication.subfragments.RawDataFragment;
+import com.example.myapplication.fragments.subfragments.ExtraDataFragment;
+import com.example.myapplication.fragments.subfragments.GimbleFragment;
+import com.example.myapplication.fragments.subfragments.RawDataFragment;
 
 public enum SecondaryFragment {
     NONE, EXTRA, GIMBLE, RAW;

@@ -228,7 +228,7 @@ public class BluetoothClassicHelper {
                 if (watchDataCallback != null) {
                     watchDataCallback.onReadError("Error reading data: " + e.getMessage());
                 }
-                disconnectFromWatch(); // Disconnect on read error
+                disconnect(); // Disconnect on read error
             });
         } finally {
             Log.d(TAG, "receiveWatchData thread finished.");
@@ -240,7 +240,7 @@ public class BluetoothClassicHelper {
      * Closes the Bluetooth socket and updates the connection status.
      * Connection status is reported via the {@link WatchDataCallback}.
      */
-    public void disconnectFromWatch() {
+    public void disconnect() {
         if (watchSocket != null) {
             try {
                 watchSocket.close();

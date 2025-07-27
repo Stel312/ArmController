@@ -572,7 +572,7 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
             Log.e(TAG, "Activity is not an AppCompatActivity. Toolbar won't function as ActionBar properly.");
         }
 
-        // Set listener for Navigation Drawer item clicks to switch secondary fragments
+        // Set listener for Navigaion Drawer item clicks to switch secondary fragments
         navigationView.setNavigationItemSelectedListener(item -> {
             drawerLayout.closeDrawer(navigationView); // Close the drawer when an item is clicked
 

@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@android:color/white"
-    tools:context=".subfragments.DataFragment"> <!-- Update tools:context with your fragment's package -->
+    tools:context=".fragments.subfragments.DataFragment"> <!-- Update tools:context with your fragment's package -->
 
     <!-- ScrollView allows the content to be scrollable if it exceeds screen height -->
     <ScrollView

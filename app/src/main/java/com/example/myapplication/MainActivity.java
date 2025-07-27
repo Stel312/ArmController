@@ -4,7 +4,7 @@ import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentTransaction;
 
-import com.example.myapplication.mainfragments.ScanFragment;
+import com.example.myapplication.fragments.ScanFragment;
 
 public class MainActivity extends AppCompatActivity {
 

@@ -1,4 +1,4 @@
-package com.example.myapplication.mainfragments;
+package com.example.myapplication.fragments;
 
 import android.Manifest;
 import android.app.AlertDialog;
@@ -19,7 +19,7 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.example.myapplication.R;
-import com.example.myapplication.bluetooth.BluetoothHelper;
+import com.example.myapplication.bluetooth.BluetoothBLEHelper;
 import com.example.myapplication.bluetooth.BluetoothClassicHelper; // Import the new Classic helper
 
 import androidx.annotation.NonNull;
@@ -33,7 +33,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class ScanFragment extends Fragment implements BluetoothHelper.BleScanCallback {
+public class ScanFragment extends Fragment implements BluetoothBLEHelper.BleScanCallback {
 
     private static final String TAG = "ScanFragment";
     private Button goToImuButton;
@@ -48,7 +48,7 @@ public class ScanFragment extends Fragment implements BluetoothHelper.BleScanCal
     private boolean isScanning = false;
     private Handler handler = new Handler(Looper.getMainLooper());
 
-    private BluetoothHelper bluetoothHelper; // For BLE operations
+    private BluetoothBLEHelper bluetoothBLEHelper; // For BLE operations
     private BluetoothClassicHelper bluetoothClassicHelper; // For Bluetooth Classic operations
 
     public ScanFragment() {
@@ -69,7 +69,7 @@ public class ScanFragment extends Fragment implements BluetoothHelper.BleScanCal
         bluetoothDevices = new ArrayList<>();
         discoveredDeviceAddresses = new HashSet<>();
         // Initialize both Bluetooth helpers
-        bluetoothHelper = new BluetoothHelper(getContext(), bluetoothAdapter);
+        bluetoothBLEHelper = new BluetoothBLEHelper(getContext(), bluetoothAdapter);
         bluetoothClassicHelper = new BluetoothClassicHelper(getContext(), bluetoothAdapter);
     }
 
@@ -193,7 +193,7 @@ public class ScanFragment extends Fragment implements BluetoothHelper.BleScanCal
         // 3. Start BLE Scanning
         if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            bluetoothHelper.startBleScan(this); // Use bluetoothHelper for BLE
+            bluetoothBLEHelper.startBleScan(this); // Use bluetoothHelper for BLE
         } else {
             Log.w(TAG, "BLE scan permissions not granted, cannot start BLE scan.");
         }
@@ -220,7 +220,7 @@ public class ScanFragment extends Fragment implements BluetoothHelper.BleScanCal
 
         Log.d(TAG, "Stopping all Bluetooth scans.");
         bluetoothClassicHelper.cancelDiscovery(); // Stop Classic discovery using the dedicated helper
-        bluetoothHelper.stopBleScan();     // Stop BLE scan using the BLE helper
+        bluetoothBLEHelper.stopBleScan();     // Stop BLE scan using the BLE helper
 
         isScanning = false;
         scanButton.setText("Start Scan");

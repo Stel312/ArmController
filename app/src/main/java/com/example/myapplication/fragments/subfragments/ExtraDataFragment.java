@@ -1,4 +1,4 @@
-package com.example.myapplication.subfragments;
+package com.example.myapplication.fragments.subfragments;
 
 import android.os.Bundle;
 import androidx.fragment.app.Fragment;
@@ -10,8 +10,6 @@ import android.widget.TextView;
 import com.example.myapplication.R;
 
 import org.joml.Vector3f;
-
-import java.util.Vector;
 
 /**
  * A simple {@link Fragment} subclass.

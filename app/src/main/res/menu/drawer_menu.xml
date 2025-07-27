@@ -1,17 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="navigation_view">
+
     <group android:checkableBehavior="single">
         <item
-        android:id="@+id/nav_hide_display"
-        android:title="Hide Display" />
-        <item
             android:id="@+id/nav_show_gimbal"
+            android:icon="@android:drawable/ic_menu_info_details"
             android:title="Show Gimbal" />
         <item
+            android:id="@+id/nav_show_angles"
+            android:icon="@android:drawable/ic_menu_info_details"
+            android:title="Show Angles" />
+        <item
             android:id="@+id/nav_show_raw"
+            android:icon="@android:drawable/ic_menu_info_details"
             android:title="Show Raw Data" />
         <item
             android:id="@+id/nav_show_extra"
+            android:icon="@android:drawable/ic_menu_info_details"
             android:title="Show Extra Data" />
     </group>
+
+    <item android:title="Actions">
+        <menu>
+            <item
+                android:id="@+id/nav_hide_display"
+                android:icon="@android:drawable/ic_menu_close_clear_cancel"
+                android:title="Hide Display" />
+            <item
+                android:id="@+id/nav_disconnect"
+                android:icon="@android:drawable/ic_menu_close_clear_cancel"
+                android:title="Disconnect" />
+        </menu>
+    </item>
+
 </menu>

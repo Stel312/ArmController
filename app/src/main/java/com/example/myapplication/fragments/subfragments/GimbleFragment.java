@@ -1,4 +1,4 @@
-package com.example.myapplication.subfragments;
+package com.example.myapplication.fragments.subfragments;
 
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
