@@ -144,17 +144,6 @@ public class GimbleFragment extends Fragment implements GLSurfaceView.Renderer {
         return view;
     }
 
-    public void setRotation(Vector3f rotation) {
-        this.rotation = rotation;
-        // Convert Euler angles to quaternion
-        quaternionRotation.rotationXYZ(
-                (float) Math.toRadians(rotation.x),
-                (float) Math.toRadians(rotation.y),
-                (float) Math.toRadians(rotation.z));
-        if (glSurfaceView != null){
-            glSurfaceView.requestRender();
-        }
-    }
 
     // New setRotation method that takes a Quaternionf
     public void setRotation(Quaternionf quaternion) {

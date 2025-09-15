@@ -25,4 +25,5 @@
     <string name="disconnect">Disconnect</string>
     <string name="imu_app_navigation">IMU App Navigation</string>
     <string name="connected_none">Connected: None</string>
+    <string name="sent_data">Sent Data</string>
 </resources>

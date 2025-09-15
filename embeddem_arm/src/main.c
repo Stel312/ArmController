@@ -17,13 +17,89 @@
 #define CLAW_UUID           0x2A39 // New UUID for Claw control (1 x uint16_t)
 #define ESC_COMMAND_UUID    0x2A40 // New UUID for two PWM ESCs (2 x uint16_t)
 #define INSTANCE_ID         0x01
+#define SERVO1_START 00
+#define SERVO2_START 270
+#define SERVO3_START 270
+
+
+#define SERVO_MIN_PULSEWIDTH  500
+#define SERVO_MAX_PULSEWIDTH  2500
+#define SERVO_MAX_ANGLE       270
+
+
+
+
+#include <stdio.h>
+#include <inttypes.h>
+#include "esp_log.h"
+#include "nvs_flash.h"
+#include "esp_gap_ble_api.h"
+#include "esp_gatts_api.h"
+#include "esp_bt_main.h"
+#include "driver/ledc.h"
+#include "esp_err.h"
+#include "esp_bt.h"
+#include <math.h> // For M_PI, cos, sin, etc.
+
+// Device information and UUID definitions
+#define DEVICE_NAME         "ESP32S3_BLE"
+#define SERVICE_UUID        0x180D
+#define QUATERNION_UUID     0x2A37
+#define ACCELERATION_UUID   0x2A38
+#define CLAW_UUID           0x2A39
+#define ESC_COMMAND_UUID    0x2A40
+#define STEPPER_UUID        0x2A41
+#define ARM_ANGLE_UUID      0x2A42
+
+
+#define INSTANCE_ID         0x01
+#define SERVO1_START 0
+#define SERVO2_START 270
+#define SERVO3_START 0
+
+#define SERVO_MIN_PULSEWIDTH  500
+#define SERVO_MAX_PULSEWIDTH  2500
+#define SERVO_MAX_ANGLE       270
+
+// Your arm's link lengths in mm
+#define L1   247.0
+#define L2   247.0
+#define L3   247.0
+
 
 static uint16_t service_handle;
 static uint16_t quaternion_handle = 0;
 static uint16_t acceleration_handle = 0;
 static uint16_t claw_handle = 0; // New handle for claw characteristic
 static uint16_t esc_command_handle = 0; // New handle for ESC command characteristic
+static uint16_t arm_angle_handle = 0;
+
 static esp_gatt_if_t gatts_if;
+
+
+static uint16_t servo_angle_1 = 0;
+static uint16_t servo_angle_2 = 0;
+static uint16_t servo_angle_3 = 0;
+
+
+// --- Control Loop Global Variables ---
+// Filtered acceleration and velocity estimates
+static float filtered_accel_y = 0.0;
+static float filtered_accel_z = 0.0;
+static float estimated_vel_y = 0.0;
+static float estimated_vel_z = 0.0;
+
+// Current target position for the robot arm's end-effector
+// Initial position set in app_main
+static float target_pos_y = 0.0;
+static float target_pos_z = 0.0;
+static float target_phi_deg = 0.0;
+
+// --- Constants for tuning ---
+#define ALPHA 0.1 // Low-pass filter constant (0 to 1, lower is smoother)
+#define TIME_STEP 0.02 // Time step in seconds (e.g., 20ms assuming 50Hz updates)
+#define VEL_SCALE 150.0 // Adjust to change sensitivity of arm movement
+#define DRIFT_THRESHOLD 0.2 // Accel threshold to detect "still" state
 
 // BLE Advertising Parameters
 static esp_ble_adv_params_t adv_params = {
@@ -49,6 +125,11 @@ static esp_ble_adv_params_t adv_params = {
 #define LEDC_CHANNEL_CLAW     LEDC_CHANNEL_2  // Claw on GPIO 17
 #define LEDC_CHANNEL_ESC_LEFT LEDC_CHANNEL_3  // ESC Left on GPIO 20
 #define LEDC_CHANNEL_ESC_RIGHT LEDC_CHANNEL_4 // ESC Right on GPIO 21
+
+#define LEDC_CHANNEL_SERVO_1 LEDC_CHANNEL_5 // Lowest Servo 
+#define LEDC_CHANNEL_SERVO_2 LEDC_CHANNEL_6 // medium servo
+#define LEDC_CHANNEL_SERVO_3 LEDC_CHANNEL_7 // Highest Servo
+
 #define LEDC_TIMER_BIT        LEDC_TIMER_13_BIT   // 13-bit resolution (up to 8191)
 #define LEDC_FREQUENCY        50   // 50 Hz update rate for servos and ESCs
 
@@ -120,7 +201,56 @@ void servo_init(void)
     };
     ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel_esc_right));
 
+    ledc_channel_config_t ledc_channel_servo_1 = {
+        .channel    = LEDC_CHANNEL_SERVO_1,
+        .duty       = 0,            // Duty value will be updated later (e.g., neutral)
+        .gpio_num   = 14,
+        .speed_mode = LEDC_SPEED_MODE,
+        .hpoint     = 0,
+        .timer_sel  = LEDC_TIMER,
+    };
+    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel_servo_1));
+
+    ledc_channel_config_t ledc_channel_servo_2 = {
+        .channel    = LEDC_CHANNEL_SERVO_2,
+        .duty       = 0,            // Duty value will be updated later (e.g., neutral)
+        .gpio_num   = 7,
+        .speed_mode = LEDC_SPEED_MODE,
+        .hpoint     = 0,
+        .timer_sel  = LEDC_TIMER,
+    };
+    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel_servo_2));
+
+    ledc_channel_config_t ledc_channel_servo_3 = {
+        .channel    = LEDC_CHANNEL_SERVO_3,
+        .duty       = 0,            // Duty value will be updated later (e.g., neutral)
+        .gpio_num   = 16,
+        .speed_mode = LEDC_SPEED_MODE,
+        .hpoint     = 0,
+        .timer_sel  = LEDC_TIMER,
+    };
+    ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel_servo_3));
+
+
+
+
     ESP_LOGI("SERVO", "PWM initialized on GPIO 18 (X), 19 (Y), 17 (Claw), 20 (ESC Left), and 21 (ESC Right)");
+}
+
+
+void set_servo_angle(ledc_channel_t channel, int angle)
+{
+    // Step 1: Map angle to pulse width
+    int pulse_width_us = SERVO_MIN_PULSEWIDTH + ((SERVO_MAX_PULSEWIDTH - SERVO_MIN_PULSEWIDTH) * angle) / SERVO_MAX_ANGLE;
+
+    // Step 2: Convert pulse width to LEDC duty cycle value
+    // Assuming a 50Hz frequency and 13-bit duty resolution (8192-1)
+    // Period = 1,000,000 us / 50 Hz = 20,000 us
+    uint32_t duty_value = (pulse_width_us * 8191) / 20000;
+
+    // Update the PWM duty cycle
+    ESP_ERROR_CHECK(ledc_set_duty(LEDC_SPEED_MODE, channel, duty_value));
+    ESP_ERROR_CHECK(ledc_update_duty(LEDC_SPEED_MODE, channel));
 }
 
 /*
@@ -135,30 +265,8 @@ void servo_init(void)
  */
 void update_xy_servo_positions(uint16_t x_value, uint16_t y_value)
 {
-    if (x_value > 18000) {
-        x_value = 18000;
-    }
-    if (y_value > 18000) {
-        y_value = 18000;
-    }
-
-    const uint32_t min_duty_servo = 410;  // ~1 ms pulse width
-    const uint32_t max_duty_servo = 819;  // ~2 ms pulse width
-
-    // Map the input range [0, 18000] to [min_duty_servo, max_duty_servo] linearly.
-    uint32_t duty_x = min_duty_servo + ((max_duty_servo - min_duty_servo) * x_value) / 18000;
-    uint32_t duty_y = min_duty_servo + ((max_duty_servo - min_duty_servo) * y_value) / 18000;
-
-    // Use %u to print unsigned integers
-    ESP_LOGI("SERVO", "Updating X/Y servos: X duty = %u, Y duty = %u for angles (%.2f°, %.2f°)",
-             (unsigned int)duty_x, (unsigned int)duty_y, x_value / 100.0, y_value / 100.0);
-
-    // Update the PWM duty cycle for the servo outputs
-    ESP_ERROR_CHECK(ledc_set_duty(LEDC_SPEED_MODE, LEDC_CHANNEL_X, duty_x));
-    ESP_ERROR_CHECK(ledc_update_duty(LEDC_SPEED_MODE, LEDC_CHANNEL_X));
-
-    ESP_ERROR_CHECK(ledc_set_duty(LEDC_SPEED_MODE, LEDC_CHANNEL_Y, duty_y));
-    ESP_ERROR_CHECK(ledc_update_duty(LEDC_SPEED_MODE, LEDC_CHANNEL_Y));
+    set_servo_angle(LEDC_CHANNEL_X, x_value);
+    set_servo_angle(LEDC_CHANNEL_Y, y_value);
 }
 
 /*
@@ -172,23 +280,7 @@ void update_xy_servo_positions(uint16_t x_value, uint16_t y_value)
  */
 void update_claw_position(uint16_t claw_value)
 {
-    if (claw_value > 18000) {
-        claw_value = 18000;
-    }
-
-    // Define specific min/max duty cycles for the claw servo if it's different
-    // These are example values; you might need to tune them for your servo.
-    const uint32_t min_duty_claw = 410; // Example: ~1 ms for fully open
-    const uint32_t max_duty_claw = 819; // Example: ~2 ms for fully closed (or vice-versa)
-
-    // Map the input range [0, 18000] to [min_duty_claw, max_duty_claw] linearly.
-    uint32_t duty_claw = min_duty_claw + ((max_duty_claw - min_duty_claw) * claw_value) / 18000;
-
-    ESP_LOGI("SERVO", "Updating Claw servo: Claw duty = %u for angle (%.2f°)",
-             (unsigned int)duty_claw, claw_value / 100.0);
-
-    ESP_ERROR_CHECK(ledc_set_duty(LEDC_SPEED_MODE, LEDC_CHANNEL_CLAW, duty_claw));
-    ESP_ERROR_CHECK(ledc_update_duty(LEDC_SPEED_MODE, LEDC_CHANNEL_CLAW));
+    set_servo_angle(LEDC_CHANNEL_CLAW, claw_value);
 }
 
 /*
@@ -235,6 +327,96 @@ void update_esc_speeds(uint16_t left_speed, uint16_t right_speed)
     ESP_ERROR_CHECK(ledc_update_duty(LEDC_SPEED_MODE, LEDC_CHANNEL_ESC_RIGHT));
 }
 
+void init_servo_arm_position()
+{
+    servo_angle_1 = SERVO1_START;
+    servo_angle_2 = SERVO2_START;
+    servo_angle_3 = SERVO3_START;
+
+    set_servo_angle(LEDC_CHANNEL_SERVO_1, SERVO1_START);
+    set_servo_angle(LEDC_CHANNEL_SERVO_2, SERVO2_START);
+    set_servo_angle(LEDC_CHANNEL_SERVO_3, SERVO3_START);
+
+
+}
+// --- Inverse Kinematics for a 3-DOF Arm on the Y-Z plane ---
+// Solves for the 3 joint angles given a target (y,z) and orientation (phi)
+bool solve_inverse_kinematics_yz(float y_target, float z_target, float phi_target_rad, float* theta1_deg, float* theta2_deg, float* theta3_deg) {
+    // 1. Calculate the wrist position
+    float y_wrist = y_target - L3 * cos(phi_target_rad);
+    float z_wrist = z_target - L3 * sin(phi_target_rad);
+
+    // 2. Solve for the second joint angle (theta2) using Law of Cosines
+    float D = sqrt(y_wrist * y_wrist + z_wrist * z_wrist);
+    if (D > (L1 + L2) || D < fabs(L1 - L2)) {
+        return false; // Position is unreachable
+    }
+
+    float cos_theta2_prime = (L1*L1 + L2*L2 - D*D) / (2 * L1 * L2);
+    if (cos_theta2_prime > 1.0) cos_theta2_prime = 1.0;
+    if (cos_theta2_prime < -1.0) cos_theta2_prime = -1.0;
+
+    float theta2_prime_rad = acos(cos_theta2_prime);
+    float theta2_rad = M_PI - theta2_prime_rad;
+
+    // 3. Solve for the first joint angle (theta1)
+    float alpha = atan2(z_wrist, y_wrist);
+    float beta = atan2(L2 * sin(theta2_rad), L1 + L2 * cos(theta2_rad));
+    float theta1_rad = alpha - beta;
+
+    // 4. Solve for the third joint angle (theta3)
+    float theta3_rad = phi_target_rad - (theta1_rad + theta2_rad);
+
+    // 5. Convert to degrees and normalize
+    *theta1_deg = fmod(theta1_rad * 180.0 / M_PI, 360.0);
+    if (*theta1_deg < 0) *theta1_deg += 360.0;
+    
+    *theta2_deg = fmod(theta2_rad * 180.0 / M_PI, 360.0);
+    if (*theta2_deg < 0) *theta2_deg += 360.0;
+
+    *theta3_deg = fmod(theta3_rad * 180.0 / M_PI, 360.0);
+    if (*theta3_deg < 0) *theta3_deg += 360.0;
+
+    return true;
+}
+
+// --- Update robot arm position based on filtered acceleration ---
+void update_arm_position_from_accel(float raw_accel_y, float raw_accel_z) {
+    // 1. Apply a low-pass filter to the raw acceleration data
+    filtered_accel_y = ALPHA * raw_accel_y + (1 - ALPHA) * filtered_accel_y;
+    filtered_accel_z = ALPHA * raw_accel_z + (1 - ALPHA) * filtered_accel_z;
+
+    // 2. Check for a "still" state to correct for drift
+    if (fabs(filtered_accel_y) < DRIFT_THRESHOLD && fabs(filtered_accel_z) < DRIFT_THRESHOLD) {
+        estimated_vel_y = 0.0;
+        estimated_vel_z = 0.0;
+    } else {
+        // 3. Integrate filtered acceleration to get velocity
+        estimated_vel_y += filtered_accel_y * TIME_STEP * VEL_SCALE;
+        estimated_vel_z += filtered_accel_z * TIME_STEP * VEL_SCALE;
+
+        // 4. Integrate velocity to update the target position
+        target_pos_y += estimated_vel_y * TIME_STEP;
+        target_pos_z += estimated_vel_z * TIME_STEP;
+    }
+
+    // 5. Clamp the target position to a safe workspace
+    // These values must be determined based on your arm's reach
+    if (target_pos_y > 400.0) target_pos_y = 400.0;
+    if (target_pos_y < 0.0) target_pos_y = 0.0;
+    if (target_pos_z > 400.0) target_pos_z = 400.0;
+    if (target_pos_z < 0.0) target_pos_z = 0.0;
+
+    // 6. Use inverse kinematics to update the servos
+    float angle1, angle2, angle3;
+    if (solve_inverse_kinematics_yz(target_pos_y, target_pos_z, target_phi_deg * M_PI / 180.0, &angle1, &angle2, &angle3)) {
+        set_servo_angle(LEDC_CHANNEL_SERVO_1, (int)angle1);
+        set_servo_angle(LEDC_CHANNEL_SERVO_2, (int)angle2);
+        set_servo_angle(LEDC_CHANNEL_SERVO_3, (int)angle3);
+    } else {
+        ESP_LOGE("IK", "Target position (%.2f, %.2f) is unreachable!", target_pos_y, target_pos_z);
+    }
+}
 
 /***************************************
  * BLE Event Handlers
@@ -363,7 +545,22 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatt_i
                                      &esc_command_attr_value,
                                      NULL);
             ESP_LOGE("BLE", "ESC Command characteristic add status: %x", ret);
-
+                
+            esp_gatt_char_prop_t arm_angle_property = ESP_GATT_CHAR_PROP_BIT_READ |
+                                                        ESP_GATT_CHAR_PROP_BIT_WRITE |
+                                                        ESP_GATT_CHAR_PROP_BIT_NOTIFY;
+            uint16_t arm_angle_value[3] = {0, 0, 0};
+            esp_attr_value_t arm_angle_attr_value = {
+                .attr_max_len = sizeof(arm_angle_value), // Max length for 3 uint16_t values (6 bytes)
+                .attr_len = sizeof(arm_angle_value),     // Initial length
+                .attr_value = (uint8_t *)arm_angle_value
+            };
+            ret = esp_ble_gatts_add_char(service_handle,
+                                     &(esp_bt_uuid_t){.len = ESP_UUID_LEN_16, .uuid.uuid16 = ARM_ANGLE_UUID},
+                                     ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
+                                     arm_angle_property,
+                                     &arm_angle_attr_value,
+                                     NULL);
             ret = esp_ble_gatts_start_service(service_handle);
             ESP_LOGE("BLE", "Service start status: %x", ret);
             break;
@@ -412,6 +609,17 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatt_i
             else if (param->write.handle == acceleration_handle) {
                 // Log acceleration data specifically
                 ESP_LOGI("BLE", "Received Acceleration data on handle %d", acceleration_handle);
+                // Assuming 3 uint16_t values for X, Y, Z acceleration
+                uint16_t x_accel_raw = (uint16_t)(param->write.value[0] | (param->write.value[1] << 8));
+                uint16_t y_accel_raw = (uint16_t)(param->write.value[2] | (param->write.value[3] << 8));
+                uint16_t z_accel_raw = (uint16_t)(param->write.value[4] | (param->write.value[5] << 8));
+
+                // Convert raw uint16_t to signed int and scale
+                // Assuming a range like +/- 10 m/s^2, adjust scale factor as needed
+                float y_accel = ((int16_t)y_accel_raw) / 100.0;
+                float z_accel = ((int16_t)z_accel_raw) / 100.0;
+                
+                update_arm_position_from_accel(y_accel, z_accel);
                 // Further parsing/processing of acceleration data can be added here if needed
             }
             // IMPORTANT: Send a write response for PROPERTY_WRITE characteristics
@@ -496,5 +704,7 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     servo_init(); // Initialize LEDC for servos and ESCs
+    init_servo_arm_position();
     ble_app_init(); // Initialize BLE
+    
 }

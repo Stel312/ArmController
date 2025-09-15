@@ -6,9 +6,13 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothServerSocket
+import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -56,18 +60,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.io.OutputStream
+import java.lang.Math.toDegrees
 import java.util.UUID
-import android.bluetooth.BluetoothAdapter  // Added import
-import android.bluetooth.BluetoothServerSocket
-import android.bluetooth.BluetoothSocket
-import android.content.pm.ServiceInfo
+import kotlin.math.asin
+import kotlin.math.atan2
 
 class ImuDataService : Service(), SensorEventListener {
     private lateinit var sensorManager: SensorManager
@@ -187,6 +189,10 @@ class ImuDataService : Service(), SensorEventListener {
         sensorManager.unregisterListener(this)
     }
 
+    // Define the arrays to be used
+    val rotationMatrix = FloatArray(9)
+    val remapMatrix = FloatArray(9)
+    val orientationAngles = FloatArray(3)
     override fun onSensorChanged(event: SensorEvent) {
         when (event.sensor.type) {
             Sensor.TYPE_ACCELEROMETER -> {
@@ -242,12 +248,34 @@ class ImuDataService : Service(), SensorEventListener {
                 }
             }
             Sensor.TYPE_ROTATION_VECTOR -> {
-                // Handle rotation vector sensor data if needed
-                val x = event.values[0]
-                val y = event.values[1]
-                val z = event.values[2]
-                val w = event.values[3]
-                val data = "rotation,$x,$y,$z,$w"
+                // Step 1: Get the rotation matrix from the sensor vector
+                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
+
+                // Step 2: Remap the coordinate system to YXZ
+                // The Y axis is the new X, the Z axis is the new Y, and the X axis is the new Z
+                SensorManager.remapCoordinateSystem(
+                    rotationMatrix,
+                    SensorManager.AXIS_Y,
+                    SensorManager.AXIS_X,
+                    remapMatrix
+                )
+
+                // Step 3: Get the orientation angles from the remapped matrix
+                // This will now give the angles in a YXZ order
+                SensorManager.getOrientation(remapMatrix, orientationAngles)
+
+                // The orientationAngles are:
+                // orientationAngles[0] is Yaw (rotation around Z axis)
+                // orientationAngles[1] is Pitch (rotation around X axis)
+                // orientationAngles[2] is Roll (rotation around Y axis)
+
+                // Convert the angles to degrees
+                val degYaw = toDegrees(orientationAngles[0].toDouble())
+                val degPitch = toDegrees(orientationAngles[1].toDouble())
+                val degRoll = toDegrees(orientationAngles[2].toDouble())
+
+                val data = "rotation,$degRoll,$degPitch,$degYaw"
+
                 if (isSendingData && isBluetoothConnected && outputStream != null) {
                     sendData(data)
                 }

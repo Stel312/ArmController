@@ -9,6 +9,9 @@ import android.widget.TextView;
 
 import com.example.myapplication.R;
 
+import org.joml.AxisAngle4f;
+import org.joml.Matrix3f;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 /**
@@ -53,9 +56,9 @@ public class ExtraDataFragment extends Fragment {
         accZExtraTextView = view.findViewById(R.id.accZExtra);
 
         // Initialize gimbal text views
-        pitchTextView = view.findViewById(R.id.pitch);
-        rollTextView = view.findViewById(R.id.roll);
-        yawTextView = view.findViewById(R.id.yaw);
+        pitchTextView = view.findViewById(R.id.X);
+        rollTextView = view.findViewById(R.id.Y);
+        yawTextView = view.findViewById(R.id.Z);
 
         return view;
     }
@@ -68,11 +71,54 @@ public class ExtraDataFragment extends Fragment {
         }
     }
 
-    public void setGimbalData(float pitch, float roll, float yaw) {
+    public void setGimbalData(Quaternionf q) {
         if (pitchTextView != null && rollTextView != null && yawTextView != null) {
-            pitchTextView.setText("Pitch: " + String.format("%.3f", pitch));
-            rollTextView.setText("Roll: " + String.format("%.3f", roll));
-            yawTextView.setText("Yaw: " + String.format("%.3f", yaw));
+            // Roll (X-axis rotation)
+            Matrix3f matrix3f = new Matrix3f();
+            q.get(matrix3f);
+
+
+            AxisAngle4f axisAngle4f = new AxisAngle4f();
+            matrix3f.getRotation(axisAngle4f);
+
+
+
+            // Update UI
+            pitchTextView.setText("X: " + String.format("%.3f", Math.toDegrees( axisAngle4f.x)));
+            rollTextView.setText("Y: " + String.format("%.3f", Math.toDegrees( axisAngle4f.y)));
+            yawTextView.setText("Z: " + String.format("%.3f", Math.toDegrees( axisAngle4f.z)));
         }
     }
+    public float getAngleAroundAxis(Quaternionf q, char axis) {
+        // Extract the rotation quaternion component around specified axis
+        float x=0, y=0, z=0, w=0;
+
+        switch(axis) {
+            case 'X':
+                x = q.x;
+                w = q.w;
+                // Normalize
+                float magX = (float)Math.sqrt(x*x + w*w);
+                x /= magX;
+                w /= magX;
+                return (float)(2 * Math.toDegrees(Math.acos(w)));
+            case 'Y':
+                y = q.y;
+                w = q.w;
+                float magY = (float)Math.sqrt(y*y + w*w);
+                y /= magY;
+                w /= magY;
+                return (float)(2 * Math.toDegrees(Math.acos(w)));
+            case 'Z':
+                z = q.z;
+                w = q.w;
+                float magZ = (float)Math.sqrt(z*z + w*w);
+                z /= magZ;
+                w /= magZ;
+                return (float)(2 * Math.toDegrees(Math.acos(w)));
+            default:
+                return 0f;
+        }
+    }
+
 }

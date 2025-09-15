@@ -9,6 +9,7 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
+import android.bluetooth.BluetoothStatusCodes;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
@@ -23,7 +24,7 @@ import androidx.core.content.ContextCompat;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.UUID;
+import com.example.myapplication.definitions.UUID.BluetoothUUID;
 
 public class BluetoothBLEHelper {
 
@@ -31,10 +32,7 @@ public class BluetoothBLEHelper {
 
     // UUIDs for ESP32 IMU BLE Service and Characteristics
     // These must match the UUIDs defined in your ESP32 firmware
-    public static final UUID IMU_SERVICE_UUID = UUID.fromString("0000180d-0000-1000-8000-00805f9b34fb"); // Example Service UUID
-    public static final UUID ROTATION_VECTOR_CHAR_UUID = UUID.fromString("00002a37-0000-1000-8000-00805f9b34fb"); // Example for Rotation Vector (Human Interface Device service)
-    public static final UUID LINEAR_ACCELERATION_CHAR_UUID = UUID.fromString("00002a38-0000-1000-8000-00805f9b34fb"); // Example for Linear Acceleration (Environmental Sensing service)
-    public static final UUID CLIENT_CHARACTERISTIC_CONFIG_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+
 
     private final Context context;
     private final BluetoothAdapter bluetoothAdapter;
@@ -66,7 +64,7 @@ public class BluetoothBLEHelper {
         void onConnectionStateChange(BluetoothGatt gatt, int status, int newState);
         void onServicesDiscovered(BluetoothGatt gatt, int status);
         void onCharacteristicsDiscovered(BluetoothGattCharacteristic linearAccelerationCharacteristic, BluetoothGattCharacteristic rotationVectorCharacteristic);
-        void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status);
+        void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, byte[] value, int status);
         void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status);
         void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic);
         void onDisconnected();
@@ -151,7 +149,7 @@ public class BluetoothBLEHelper {
             Log.d(TAG, "Attempting to set characteristic notification for: " + characteristic.getUuid());
             boolean success = gatt.setCharacteristicNotification(characteristic, true);
             if (success) {
-                BluetoothGattDescriptor descriptor = characteristic.getDescriptor(CLIENT_CHARACTERISTIC_CONFIG_UUID);
+                BluetoothGattDescriptor descriptor = characteristic.getDescriptor(BluetoothUUID.CLIENT_CHARACTERISTIC_CONFIG_UUID);
                 if (descriptor != null) {
                     descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
                     boolean writeSuccess = gatt.writeDescriptor(descriptor);
@@ -174,7 +172,6 @@ public class BluetoothBLEHelper {
             processNextOperation();
         }
     }
-
     public void writeCharacteristic(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, byte[] value) {
         if (gatt == null || characteristic == null) {
             Log.e(TAG, "Gatt or characteristic is null, cannot write.");
@@ -193,11 +190,11 @@ public class BluetoothBLEHelper {
             return;
         }
 
-        characteristic.setValue(value);
+        //characteristic.setValue(value);
 
         gattOperationsQueue.add(() -> {
-            boolean success = gatt.writeCharacteristic(characteristic);
-            if (!success) {
+            int success = gatt.writeCharacteristic(characteristic, value, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+            if (BluetoothStatusCodes.SUCCESS !=  success) {
                 Log.e(TAG, "Failed to write characteristic " + characteristic.getUuid() + " to device.");
                 completedOperation();
             } else {
@@ -279,9 +276,9 @@ public class BluetoothBLEHelper {
                         fragmentGattCallback.onServicesDiscovered(gatt, status);
                     }
 
-                    BluetoothGattService imuService = gatt.getService(IMU_SERVICE_UUID);
+                    BluetoothGattService imuService = gatt.getService(BluetoothUUID.IMU_SERVICE_UUID);
                     if (imuService == null) {
-                        Log.e(TAG, "IMU Service not found with UUID: " + IMU_SERVICE_UUID);
+                        Log.e(TAG, "IMU Service not found with UUID: " + BluetoothUUID.IMU_SERVICE_UUID);
                         // Trigger a connection failed or specific error if the primary service is missing
                         if (fragmentGattCallback != null) {
                             fragmentGattCallback.onConnectionFailed("IMU Service not found.");
@@ -289,8 +286,8 @@ public class BluetoothBLEHelper {
                         return; // Stop processing if service is not found
                     }
 
-                    BluetoothGattCharacteristic rotationVectorChar = imuService.getCharacteristic(ROTATION_VECTOR_CHAR_UUID);
-                    BluetoothGattCharacteristic linearAccelerationChar = imuService.getCharacteristic(LINEAR_ACCELERATION_CHAR_UUID);
+                    BluetoothGattCharacteristic rotationVectorChar = imuService.getCharacteristic(BluetoothUUID.ROTATION_VECTOR_CHAR_UUID);
+                    BluetoothGattCharacteristic linearAccelerationChar = imuService.getCharacteristic(BluetoothUUID.LINEAR_ACCELERATION_CHAR_UUID);
 
                     if (rotationVectorChar != null && linearAccelerationChar != null) {
                         Log.d(TAG, "Found Rotation Vector and Linear Acceleration notification characteristics.");
@@ -314,12 +311,12 @@ public class BluetoothBLEHelper {
         }
 
         @Override
-        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-            super.onCharacteristicRead(gatt, characteristic, status);
+        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, byte[] value, int status) {
+            super.onCharacteristicRead(gatt, characteristic, value, status);
             handler.post(() -> {
                 Log.d(TAG, "onCharacteristicRead: " + characteristic.getUuid().toString().substring(4, 8) + ", status: " + status);
                 if (fragmentGattCallback != null) {
-                    fragmentGattCallback.onCharacteristicRead(gatt, characteristic, status);
+                    fragmentGattCallback.onCharacteristicRead(gatt, characteristic, value, status);
                 }
                 completedOperation();
             });

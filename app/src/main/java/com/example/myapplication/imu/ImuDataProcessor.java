@@ -1,5 +1,7 @@
 package com.example.myapplication.imu;
 
+import static java.lang.Math.clamp;
+
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.joml.Math;
@@ -28,9 +30,12 @@ public class ImuDataProcessor {
     private final Vector3f accelerometer = new Vector3f();
     private final Vector3f gyroscope = new Vector3f();
     private final Vector3f magnetometer = new Vector3f();
-    private final Vector3f eulerAngles = new Vector3f(); // Using Vector3f for Euler angles (degrees)
     private final Vector3f linearAcceleration = new Vector3f();
     private final Quaternionf quaternion = new Quaternionf(); // Stores rotation from Watch (RFCOMM) or ESP32 (BLE)
+    private final Vector3f eulerAngles = new Vector3f(); // Stores rotation in degrees from Watch (RFCOMM) or ESP32 (BLE)
+
+    private short[] armAngles = {0, 0, 0}; // Stores the rotation first second and third servos of what the esp32 thinks the arm is at
+
 
     /**
      * Listener interface to signal when processed IMU data (from the Watch, via RFCOMM)
@@ -51,6 +56,8 @@ public class ImuDataProcessor {
          */
         void onLinearAccelerationDataReady(byte[] linearAccelerationDataBytes);
         // Add other data types if you plan to send them from Android to ESP32
+
+        void onClawDataReady(byte[] clawDataBytes);
     }
 
     /**
@@ -61,13 +68,10 @@ public class ImuDataProcessor {
     public interface ImuDataCallback {
         /**
          * Called when new, processed IMU data is available.
-         * @param accelerometer The current accelerometer data (may be filtered).
-         * @param gyroscope The current gyroscope data (may be corrected).
-         * @param magnetometer The current magnetometer data.
          * @param rotationEuler The current Euler angles (in degrees) representing rotation.
          * @param linearAcceleration The current linear acceleration data.
          */
-        void onNewImuData(Vector3f accelerometer, Vector3f gyroscope, Vector3f magnetometer, Vector3f rotationEuler, Vector3f linearAcceleration);
+        void onNewImuData(Quaternionf rotationEuler, Vector3f linearAcceleration);
 
         /**
          * Called when the raw data received is incomplete and cannot be fully parsed.
@@ -102,6 +106,10 @@ public class ImuDataProcessor {
      */
     public void setDataReadyListener(ImuDataReadyListener listener) {
         this.dataReadyListener = listener;
+    }
+
+    public ImuDataReadyListener getDataReadyListener() {
+        return dataReadyListener;
     }
 
     /**
@@ -172,11 +180,7 @@ public class ImuDataProcessor {
                             float w = Float.parseFloat(values[4].trim());
                             quaternion.set(x, y, z, w);
                             // Convert quaternion to Euler angles (degrees) for display/fusion
-                            Matrix3f matrix = new Matrix3f();
-                            quaternion.get(matrix);
-                            // getEulerAnglesZYX is a common convention, verify if XYZ or another order is preferred for your application/display
-                            eulerAngles.set(matrix.getEulerAnglesZYX(new Vector3f()));
-                            eulerAngles.mul((float) (180.0f / Math.PI)); // Convert radians to degrees
+
                             dataUpdated = true;
 
                             // If configured, notify listener that rotation data is ready for BLE transmission
@@ -185,6 +189,18 @@ public class ImuDataProcessor {
                                 dataReadyListener.onRotationDataReady(convertQuaternionToBytes(quaternion));
                                 // Alternatively, if ESP32 expects Euler angles:
                                 // dataReadyListener.onRotationDataReady(convertEulerAnglesToBytes(eulerAngles));
+                            }
+                        } else if ((values.length == 4)) {
+
+
+                            // Convert quaternion to Euler angles (degrees) for display/fusion
+                            eulerAngles.set((x+360) %360, (y +360 )%360, (z+ 360) % 360);
+                            dataUpdated = true;
+
+                            // If configured, notify listener that rotation data is ready for BLE transmission
+                            if (dataReadyListener != null) {
+                                // Alternatively, if ESP32 expects Euler angles:
+                                dataReadyListener.onRotationDataReady(convertEulerAnglesToBytes(eulerAngles));
                             }
                         } else {
                             // If "rotation" type doesn't have 5 values (x,y,z,w), it's incomplete
@@ -203,7 +219,7 @@ public class ImuDataProcessor {
                     // If you want to run sensor fusion on data coming from the Watch,
                     // uncomment and call it here, passing the relevant sensor readings.
                     // For example: sensorFusion.update(accelerometer, gyroscope, magnetometer);
-                    imuInternalCallback.onNewImuData(accelerometer, gyroscope, magnetometer, eulerAngles, linearAcceleration);
+                    imuInternalCallback.onNewImuData( quaternion, linearAcceleration);
                 }
 
             } catch (NumberFormatException e) {
@@ -252,16 +268,13 @@ public class ImuDataProcessor {
             quaternion.set(x, y, z, w); // Update the internal quaternion from ESP32 data
 
             // Convert quaternion to Euler angles (degrees) for display/fusion
-            Matrix3f matrix = new Matrix3f();
-            quaternion.get(matrix);
-            eulerAngles.set(matrix.getEulerAnglesZYX(new Vector3f())); // Assuming ZYX order for Euler conversion
-            eulerAngles.mul((float) (180.0f / Math.PI)); // Convert radians to degrees for common display
+
 
             if (callback != null) {
                 // Pass the updated IMU data to the UI or other consumers.
                 // Note: accelerometer, gyroscope, magnetometer, linearAcceleration are not directly updated by this BLE call,
                 // so their current values are passed along.
-                callback.onNewImuData(accelerometer, gyroscope, magnetometer, eulerAngles, linearAcceleration);
+                callback.onNewImuData(quaternion, linearAcceleration);
             }
         } catch (Exception e) {
             // Catch any parsing or unexpected errors during BLE data processing
@@ -307,7 +320,7 @@ public class ImuDataProcessor {
                 // Pass the updated IMU data to the UI or other consumers.
                 // Note: accelerometer, gyroscope, magnetometer, eulerAngles/quaternion are not directly updated by this BLE call,
                 // so their current values are passed along.
-                callback.onNewImuData(accelerometer, gyroscope, magnetometer, eulerAngles, linearAcceleration);
+                callback.onNewImuData(quaternion, linearAcceleration);
             }
         } catch (Exception e) {
             // Catch any parsing or unexpected errors during BLE data processing
@@ -318,6 +331,19 @@ public class ImuDataProcessor {
         }
     }
 
+    public void processArmAngles(byte[] rawBytes){
+        try {
+            ByteBuffer buffer = ByteBuffer.wrap(rawBytes);
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
+            for (int i = 0; i < this.armAngles.length; i++) {
+                this.armAngles[i] = buffer.getShort();
+            }
+            Log.d(TAG, "Processed arm angles: " + this.armAngles[0] + ", " + this.armAngles[1] + ", " + this.armAngles[2]);
+        } catch (Exception e) {
+            Log.e(TAG, "Error parsing BLE arm angle data: " + e.getMessage());
+        }
+    }
+
     // --- Getters for current sensor states ---
     /**
      * Retrieves the current accelerometer data. This might be raw or filtered depending on
@@ -325,7 +351,7 @@ public class ImuDataProcessor {
      * @return A {@link Vector3f} representing the filtered accelerometer data.
      */
     public Vector3f getFilteredAccelerometer() {
-        return sensorFusion.getFilteredAccelerometer(); // Assuming sensor fusion is applied
+        return this.sensorFusion.getFilteredAccelerometer(); // Assuming sensor fusion is applied
     }
 
     /**
@@ -355,15 +381,6 @@ public class ImuDataProcessor {
     }
 
     /**
-     * Retrieves the current rotation as Euler angles in degrees.
-     * This value is derived from the latest quaternion data processed (from Watch or ESP32).
-     * @return A {@link Vector3f} representing Euler angles (X, Y, Z) in degrees.
-     */
-    public Vector3f getRotationVector() { // Returns Euler angles in degrees
-        return eulerAngles; // Latest Euler angles, derived from Watch or ESP32 quaternion
-    }
-
-    /**
      * Retrieves the current rotation as a quaternion.
      * This value is updated by either processing rotation data from the Watch (RFCOMM) or the ESP32 (BLE).
      * @return A {@link Quaternionf} representing the latest rotation quaternion.
@@ -387,6 +404,34 @@ public class ImuDataProcessor {
     // --- Byte Conversion Methods for BLE Transmission (Android App -> ESP32) ---
     // These methods convert JOML Vector3f/Quaternionf into byte arrays suitable for BLE Characteristic Writes.
 
+
+    public short[] getArmAngles() {
+        return armAngles;
+    }
+
+    public void setArmAngles(short[] armAngles) {
+        this.armAngles = armAngles;
+    }
+    public Vector3f getRoationAngles() {
+
+        short yAngle = (short) clamp(((-eulerAngles.y + 360 + 163
+        ) %360), 0, 270);
+        short xAngle = (short) clamp(((eulerAngles.x + 630 +69) % 360), 0, 270);
+
+        return new Vector3f(xAngle, yAngle, eulerAngles.z);
+    }
+
+
+    public byte[] convertArmAnglesToBytes() {
+        ByteBuffer buffer = ByteBuffer.allocate(6);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+        for (short angle : this.armAngles) {
+            buffer.putShort(angle);
+        }
+        return buffer.array();
+    }
+
+
     /**
      * Converts a {@link Vector3f} (like linear acceleration) into a 6-byte array.
      * Each float component (x, y, z) is scaled by a factor (`ACCEL_SCALE_FACTOR`)
@@ -402,7 +447,6 @@ public class ImuDataProcessor {
     public byte[] convertVector3fToBytes(Vector3f vector) {
         ByteBuffer buffer = ByteBuffer.allocate(6); // 3 shorts * 2 bytes/short
         buffer.order(ByteOrder.LITTLE_ENDIAN); // Crucial: Ensure byte order matches ESP32's expectation for writes
-
         // Scaling factor for linear acceleration. Adjust as needed.
         // Make sure the scaled value (e.g., vector.x * 1000) fits within a short (-32768 to 32767).
         final float ACCEL_SCALE_FACTOR = 1000.0f;
@@ -412,26 +456,13 @@ public class ImuDataProcessor {
         return buffer.array();
     }
 
-    /**
-     * Converts Euler angles (in degrees) from a {@link Vector3f} into a 6-byte array.
-     * Each float component (x, y, z) is scaled by a factor (`EULER_SCALE_FACTOR`)
-     * and truncated to a `short` (2 bytes). Similar scaling principle as `convertVector3fToBytes`.
-     *
-     * @param euler The {@link Vector3f} containing Euler angles in degrees.
-     * @return A 6-byte array representing the Euler angles.
-     */
-    public byte[] convertEulerAnglesToBytes(Vector3f euler) { // Takes Euler angles in degrees
-        ByteBuffer buffer = ByteBuffer.allocate(6);
+    public byte[] convertEulerAnglesToBytes(Vector3f eulerAngles){
+        ByteBuffer buffer = ByteBuffer.allocate(4);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
-        // Scaling factor for Euler angles. Adjust as needed.
-        // For angles up to 360 degrees, a factor of 100 allows for 2 decimal places (36000 fits in short).
-        final float EULER_SCALE_FACTOR = 100.0f;
-        buffer.putShort((short) (euler.x * EULER_SCALE_FACTOR));
-        buffer.putShort((short) (euler.y * EULER_SCALE_FACTOR));
-        buffer.putShort((short) (euler.z * EULER_SCALE_FACTOR));
+        buffer.putShort((short )getRoationAngles().y);
+        buffer.putShort((short )getRoationAngles().x);
         return buffer.array();
     }
-
     /**
      * Converts a {@link Quaternionf} into an 8-byte array.
      * Each float component (x, y, z, w) is scaled by a factor (`Q_SCALE_FACTOR`)
@@ -442,20 +473,24 @@ public class ImuDataProcessor {
      * @return An 8-byte array representing the quaternion.
      */
     public byte[] convertQuaternionToBytes(Quaternionf quaternion) {
-        ByteBuffer buffer = ByteBuffer.allocate(8); // 4 shorts * 2 bytes/short
+        ByteBuffer buffer = ByteBuffer.allocate(4); // 4 shorts * 2 bytes/short
         buffer.order(ByteOrder.LITTLE_ENDIAN); // Crucial: Ensure byte order matches ESP32's expectation for writes
 
         // Scaling factor for quaternion components (which theoretically range from -1.0 to 1.0).
         // A factor like 10000 provides good precision (e.g., 0.5000 becomes 5000).
         // Max value 1.0 * 10000 = 10000, which easily fits within a short (-32768 to 32767).
         final float Q_SCALE_FACTOR = 10000.0f;
-        buffer.putShort((short) (quaternion.x * Q_SCALE_FACTOR));
-        buffer.putShort((short) (quaternion.y * Q_SCALE_FACTOR));
-        buffer.putShort((short) (quaternion.z * Q_SCALE_FACTOR));
-        buffer.putShort((short) (quaternion.w * Q_SCALE_FACTOR));
 
+        Vector3f eulerAngles = new Vector3f(); // [pitch, yaw, roll]
+        quaternion.getEulerAnglesYXZ(eulerAngles);  // radians
+
+        // Convert radians to degrees and apply clamping.
+        float xAngle = (float) Math.toDegrees(eulerAngles.x);
+        float yAngle = (float) Math.toDegrees(eulerAngles.y);
+        buffer.putShort((short) (((eulerAngles.x) + 630) % 360f * Q_SCALE_FACTOR));
+        buffer.putShort((short) (((eulerAngles.y) + 630) % 360f * Q_SCALE_FACTOR));
         return buffer.array();
-    }
+    }   
 
     /**
      * Helper method to convert a byte array to a hexadecimal string representation for logging.
