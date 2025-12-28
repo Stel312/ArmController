@@ -40,8 +40,8 @@
 
         <service
             android:name=".ImuDataService"
+            android:foregroundServiceType="dataSync"
             android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="dataSync"/>  </application>
+            android:exported="false" /></application>
 
 </manifest>

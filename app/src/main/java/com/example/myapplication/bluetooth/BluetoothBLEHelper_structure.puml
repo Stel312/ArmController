@@ -1,0 +1,377 @@
+@startuml
+
+/' diagram meta data start
+config=StructureConfiguration;
+{
+  "projectClassification": {
+    "searchMode": "OpenProject", // OpenProject, AllProjects
+    "includedProjects": "",
+    "pathEndKeywords": "*.impl",
+    "isClientPath": "",
+    "isClientName": "",
+    "isTestPath": "",
+    "isTestName": "",
+    "isMappingPath": "",
+    "isMappingName": "",
+    "isDataAccessPath": "",
+    "isDataAccessName": "",
+    "isDataStructurePath": "",
+    "isDataStructureName": "",
+    "isInterfaceStructuresPath": "",
+    "isInterfaceStructuresName": "",
+    "isEntryPointPath": "",
+    "isEntryPointName": "",
+    "treatFinalFieldsAsMandatory": false
+  },
+  "graphRestriction": {
+    "classPackageExcludeFilter": "",
+    "classPackageIncludeFilter": "",
+    "classNameExcludeFilter": "",
+    "classNameIncludeFilter": "",
+    "methodNameExcludeFilter": "",
+    "methodNameIncludeFilter": "",
+    "removeByInheritance": "", // inheritance/annotation based filtering is done in a second step
+    "removeByAnnotation": "",
+    "removeByClassPackage": "", // cleanup the graph after inheritance/annotation based filtering is done
+    "removeByClassName": "",
+    "cutMappings": false,
+    "cutEnum": true,
+    "cutTests": true,
+    "cutClient": true,
+    "cutDataAccess": true,
+    "cutInterfaceStructures": true,
+    "cutDataStructures": true,
+    "cutGetterAndSetter": true,
+    "cutConstructors": true
+  },
+  "graphTraversal": {
+    "forwardDepth": 6,
+    "backwardDepth": 6,
+    "classPackageExcludeFilter": "",
+    "classPackageIncludeFilter": "",
+    "classNameExcludeFilter": "",
+    "classNameIncludeFilter": "",
+    "methodNameExcludeFilter": "",
+    "methodNameIncludeFilter": "",
+    "hideMappings": false,
+    "hideDataStructures": false,
+    "hidePrivateMethods": true,
+    "hideInterfaceCalls": true, // indirection: implementation -> interface (is hidden) -> implementation
+    "onlyShowApplicationEntryPoints": false, // root node is included
+    "useMethodCallsForStructureDiagram": "ForwardOnly" // ForwardOnly, BothDirections, No
+  },
+  "details": {
+    "aggregation": "GroupByClass", // ByClass, GroupByClass, None
+    "showClassGenericTypes": true,
+    "showMethods": true,
+    "showMethodParameterNames": true,
+    "showMethodParameterTypes": true,
+    "showMethodReturnType": true,
+    "showPackageLevels": 2,
+    "showDetailedClassStructure": true
+  },
+  "rootClass": "com.example.myapplication.bluetooth.BluetoothBLEHelper",
+  "extensionCallbackMethod": "" // qualified.class.name#methodName - signature: public static String method(String)
+}
+diagram meta data end '/
+
+
+
+digraph g {
+    rankdir="TB"
+    splines=polyline
+    
+
+'nodes 
+subgraph cluster_1322970774 { 
+   	label=example
+	labeljust=l
+	fillcolor="#ececec"
+	style=filled
+   
+   subgraph cluster_915177120 { 
+   	label=myapplication
+	labeljust=l
+	fillcolor="#d8d8d8"
+	style=filled
+   
+   BluetoothBLEHelper987593613[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(C)BluetoothBLEHelper</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >-   bleScanCallback: BleScanCallback [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   bleScanInternalCallback: ScanCallback [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   bluetoothAdapter: BluetoothAdapter [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   bluetoothLeScanner: BluetoothLeScanner [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   connectedGatt: BluetoothGatt [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   context: Context [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   fragmentGattCallback: BleGattCallback [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   gattCallback: BluetoothGattCallback [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   gattOperationsQueue: Queue&lt;Runnable&gt; [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   handler: Handler [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   isBleScanning: boolean [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   isProcessingQueue: boolean [1]</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >- bytesToHex(bytes: byte[]): String</TD></TR>
+<TR><TD ALIGN="LEFT" >+ closeGatt()</TD></TR>
+<TR><TD ALIGN="LEFT" >- completedOperation()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ connectBLEDevice(address: String, callback: BleGattCallback)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ disconnectBLEDevice(gatt: BluetoothGatt)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ enableCharacteristicNotifications(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic)</TD></TR>
+<TR><TD ALIGN="LEFT" >- processNextOperation()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ startBleScan(callback: BleScanCallback)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ stopBleScan()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ writeCharacteristic(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: byte[])</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#FFFFFF"
+];
+
+BluetoothClassicHelper987593613[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(C)BluetoothClassicHelper</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >-   bluetoothAdapter: BluetoothAdapter [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   classicDiscoveryCallback: DeviceCallback [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   classicDiscoveryReceiver: BroadcastReceiver [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   context: Context [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   isClassicScanning: boolean [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   isConnectedToWatch: boolean [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   mainHandler: Handler [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   watchDataCallback: WatchDataCallback [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   watchSocket: BluetoothSocket [0..1]</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >+ cancelDiscovery()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ connectToWatch(deviceAddress: String)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ disconnect()</TD></TR>
+<TR><TD ALIGN="LEFT" >- logAndToast(message: String, isError: boolean)</TD></TR>
+<TR><TD ALIGN="LEFT" >- receiveWatchData()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ startDiscovery(callback: DeviceCallback)</TD></TR>
+<TR><TD ALIGN="LEFT" >- startReceivingWatchData()</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#FFFFFF"
+];
+
+ImuDataProcessor706433366[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(C)ImuDataProcessor</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >-   accelerometer: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   armAngles: short[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   dataReadyListener: ImuDataReadyListener [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   eulerAngles: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   gyroscope: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   imuInternalCallback: ImuDataCallback [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   linearAcceleration: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   magnetometer: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   quaternion: Quaternionf [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   sensorFusion: ImuSensorFusion [0..1]</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >- bytesToHex(bytes: byte[]): String</TD></TR>
+<TR><TD ALIGN="LEFT" >+ convertArmAnglesToBytes(): byte[]</TD></TR>
+<TR><TD ALIGN="LEFT" >+ convertEulerAnglesToBytes(eulerAngles: Vector3f): byte[]</TD></TR>
+<TR><TD ALIGN="LEFT" >+ convertQuaternionToBytes(quaternion: Quaternionf): byte[]</TD></TR>
+<TR><TD ALIGN="LEFT" >+ convertVector3fToBytes(vector: Vector3f): byte[]</TD></TR>
+<TR><TD ALIGN="LEFT" >- isSensorDataValid(vector: Vector3f): boolean</TD></TR>
+<TR><TD ALIGN="LEFT" >+ process(rawData: String, callback: ImuDataCallback)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ processArmAngles(rawBytes: byte[])</TD></TR>
+<TR><TD ALIGN="LEFT" >+ processLinearAccelerationBLE(rawBytes: byte[], callback: ImuDataCallback)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ processRotationVectorBLE(rawBytes: byte[], callback: ImuDataCallback)</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#FFFFFF"
+];
+
+ImuFragment1719740904[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(C)ImuFragment</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >-   binding: FragmentImuFagmentBinding [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   bluetoothBleHelper: BluetoothBLEHelper [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   bluetoothClassicHelper: BluetoothClassicHelper [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   clawNotificationCharacteristic: BluetoothGattCharacteristic [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   clawSlider: Slider [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   connectedGatt: BluetoothGatt [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   currentSecondaryFragmentClass: Class&lt;? extends Fragment&gt; [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   drawerLayout: DrawerLayout [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   espImuDeviceAddress: String [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   fragmentContext: Context [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   imuDataProcessor: ImuDataProcessor [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   isBleCharacteristicsReady: boolean [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   kinematics: Kinematics [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   linearAccelerationNotificationCharacteristic: BluetoothGattCharacteristic [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   mainHandler: Handler [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   navigationView: NavigationView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   rotationVectorNotificationCharacteristic: BluetoothGattCharacteristic [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   sensorFusion: ImuSensorFusion [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   toolbar: Toolbar [0..1]</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >- bytesToHex(bytes: byte[]): String</TD></TR>
+<TR><TD ALIGN="LEFT" >- checkBluetoothPermissions(): boolean</TD></TR>
+<TR><TD ALIGN="LEFT" >- connectToEspImuBle()</TD></TR>
+<TR><TD ALIGN="LEFT" >- connectToWatch()</TD></TR>
+<TR><TD ALIGN="LEFT" >- disconnectFromEspImuBle()</TD></TR>
+<TR><TD ALIGN="LEFT" >- disconnectFromWatch()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ hideSecondaryFragment()</TD></TR>
+<TR><TD ALIGN="LEFT" >- initUiElements()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ loadSecondaryFragment(fragmentClass: Class&lt;? extends Fragment&gt;)</TD></TR>
+<TR><TD ALIGN="LEFT" >- navigateToScanFragment()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ newInstance(deviceAddress: String): ImuFragment</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onAttach(context: Context)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: int)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: byte[], status: int)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: int)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCharacteristicsDiscovered(linearAccelerationChar: BluetoothGattCharacteristic, rotationVectorChar: BluetoothGattCharacteristic)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onConnectionFailed(message: String)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onConnectionStateChange(gatt: BluetoothGatt, status: int, newState: int)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCreate(savedInstanceState: Bundle)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCreateView(inflater: LayoutInflater, container: ViewGroup, savedInstanceState: Bundle): View</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onDestroyView()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onDetach()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onDisconnected()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onRequestPermissionsResult(requestCode: int, permissions: String[], grantResults: int[])</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onServicesDiscovered(gatt: BluetoothGatt, status: int)</TD></TR>
+<TR><TD ALIGN="LEFT" >- showToast(message: String)</TD></TR>
+<TR><TD ALIGN="LEFT" >- updateSecondaryFragments(rotation: Quaternionf, linearAcceleration: Vector3f)</TD></TR>
+<TR><TD ALIGN="LEFT" >- updateStatusText(text: String)</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#FFFFFF"
+];
+
+ImuSensorFusion706433366[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(C)ImuSensorFusion</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >-   accelerometerCutoffFrequency: float [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   accelerometerFiltered: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   beta: float [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   betaMax: float [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   betaMin: float [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   correctedGyroscope: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   deadzone: float [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   deltaTime: float [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   gainAdaptationRate: float [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   gyroscopeBias: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   gyroscopeCutoffFrequency: float [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   lastUpdateTime: long [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   pitch: float [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   quaternion: Quaternionf [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   rawGyroscopePrevious: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   roll: float [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   yaw: float [1]</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >- calculateAlpha(cutoffFrequency: float): float</TD></TR>
+<TR><TD ALIGN="LEFT" >- calculateAlphaHighPass(cutoffFrequency: float): float</TD></TR>
+<TR><TD ALIGN="LEFT" >- filterAccelerometer(rawAccelerometer: Vector3f)</TD></TR>
+<TR><TD ALIGN="LEFT" >- filterGyroscope(rawGyroscope: Vector3f)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ update(rawAccelerometer: Vector3f, rawGyroscope: Vector3f)</TD></TR>
+<TR><TD ALIGN="LEFT" >- updateEulerAngles()</TD></TR>
+<TR><TD ALIGN="LEFT" >- updateQuaternion()</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#FFFFFF"
+];
+
+Kinematics1355040687[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(C)Kinematics</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >-   L1: float [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   L2: float [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   L3: float [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   jerk: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   lastAcceleration: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   lastTime: long [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   minZ: float [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   position: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   velocity: Vector3f [0..1]</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >- deriveJerk(linearAcceleration: Vector3f, dt: float)</TD></TR>
+<TR><TD ALIGN="LEFT" >- integratePosition(linearAcceleration: Vector3f, dt: float)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ update(linearAcceleration: byte[], armAngles: short[])</TD></TR>
+<TR><TD ALIGN="LEFT" >+ updateArmAngles(): short[]</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#FFFFFF"
+];
+
+ScanFragment1719740904[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(C)ScanFragment</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >-   REQUEST_ENABLE_BT: int [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   bluetoothAdapter: BluetoothAdapter [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   bluetoothBLEHelper: BluetoothBLEHelper [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   bluetoothClassicHelper: BluetoothClassicHelper [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   bluetoothDevices: ArrayList&lt;BluetoothDevice&gt; [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   deviceListAdapter: ArrayAdapter&lt;String&gt; [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   deviceListView: ListView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   discoveredDeviceAddresses: Set&lt;String&gt; [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   goToImuButton: Button [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   handler: Handler [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   isScanning: boolean [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   scanButton: Button [0..1]</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >- addDeviceToList(device: BluetoothDevice, displayString: String)</TD></TR>
+<TR><TD ALIGN="LEFT" >- checkAndRequestBluetoothPermissions()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ newInstance(): ScanFragment</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onActivityResult(requestCode: int, resultCode: int, data: Intent)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onBleDeviceFound(device: BluetoothDevice, rssi: int, scanRecord: byte[])</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCreate(savedInstanceState: Bundle)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCreateView(inflater: LayoutInflater, container: ViewGroup, savedInstanceState: Bundle): View</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onDestroy()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onRequestPermissionsResult(requestCode: int, permissions: String[], grantResults: int[])</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onScanFailed(errorCode: int)</TD></TR>
+<TR><TD ALIGN="LEFT" >- performBluetoothScan()</TD></TR>
+<TR><TD ALIGN="LEFT" >- startBluetoothScan()</TD></TR>
+<TR><TD ALIGN="LEFT" >- stopScanning()</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#FFFFFF"
+];
+} 
+} 
+
+'edges    
+BluetoothBLEHelper987593613 -> ImuFragment1719740904[label="fragmentGattCallback
+[0..1]", arrowhead=none];
+BluetoothBLEHelper987593613 -> ScanFragment1719740904[arrowhead=none];
+BluetoothBLEHelper987593613 -> ScanFragment1719740904[label="bleScanCallback
+[0..1]", arrowhead=none];
+ImuDataProcessor706433366 -> ImuSensorFusion706433366[label="sensorFusion
+[0..1]"];
+ImuFragment1719740904 -> BluetoothBLEHelper987593613[label="bluetoothBleHelper
+[0..1]"];
+ImuFragment1719740904 -> BluetoothClassicHelper987593613[label="bluetoothClassicHelper
+[0..1]"];
+ImuFragment1719740904 -> ImuDataProcessor706433366[label="imuDataProcessor
+[0..1]"];
+ImuFragment1719740904 -> ImuSensorFusion706433366[label="sensorFusion
+[0..1]"];
+ImuFragment1719740904 -> Kinematics1355040687[label="kinematics
+[0..1]"];
+ScanFragment1719740904 -> BluetoothBLEHelper987593613[label="bluetoothBLEHelper
+[0..1]"];
+ScanFragment1719740904 -> BluetoothClassicHelper987593613[label="bluetoothClassicHelper
+[0..1]"];
+ScanFragment1719740904 -> ImuFragment1719740904[label="onCreateView() -> newInstance()"];
+    
+}
+@enduml

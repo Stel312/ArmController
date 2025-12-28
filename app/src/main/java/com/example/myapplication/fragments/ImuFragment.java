@@ -1,4 +1,4 @@
-package com.example.myapplication.mainfragments;
+package com.example.myapplication.fragments;
 
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
@@ -8,13 +8,11 @@ import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -31,18 +29,24 @@ import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.example.myapplication.R;
+import com.example.myapplication.bluetooth.BluetoothBLEHelper;
 import com.example.myapplication.bluetooth.BluetoothClassicHelper;
-import com.example.myapplication.bluetooth.BluetoothHelper;
+import com.example.myapplication.controls.Kinematics;
+import com.example.myapplication.databinding.FragmentImuFagmentBinding;
+import com.example.myapplication.definitions.UUID.BluetoothUUID;
+import com.example.myapplication.fragments.subfragments.ExtraDataFragment;
+import com.example.myapplication.fragments.subfragments.GimbleFragment;
+import com.example.myapplication.fragments.subfragments.RawDataFragment;
 import com.example.myapplication.imu.ImuDataProcessor;
 import com.example.myapplication.imu.ImuSensorFusion;
-import com.example.myapplication.subfragments.ExtraDataFragment;
-import com.example.myapplication.subfragments.GimbleFragment;
-import com.example.myapplication.subfragments.RawDataFragment;
-import com.example.myapplication.databinding.FragmentImuFagmentBinding;
 import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.slider.Slider;
 
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -53,7 +57,7 @@ import java.util.UUID;
  * processing the received IMU data, and displaying it in various sub-fragments via a navigation drawer.
  * It acts as a central hub for IMU-related operations and UI updates.
  *
- * <p>It implements {@link BluetoothHelper.BleGattCallback} to receive Bluetooth Low Energy (BLE)
+ * <p>It implements {@link BluetoothBLEHelper.BleGattCallback} to receive Bluetooth Low Energy (BLE)
  * GATT callbacks for the ESP IMU connection.
  *
  * <p>Required permissions (handled at runtime):
@@ -61,7 +65,7 @@ import java.util.UUID;
  * <li>{@link Manifest.permission#BLUETOOTH_CONNECT} (for Android 12+)</li>
  * </ul>
  */
-public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCallback {
+public class ImuFragment extends Fragment implements BluetoothBLEHelper.BleGattCallback {
 
     private static final String TAG = "ImuFragment";
     /**
@@ -77,24 +81,23 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
     private Toolbar toolbar;
-
+    private Slider clawSlider;
     private BluetoothClassicHelper bluetoothClassicHelper;
-    private BluetoothHelper bluetoothBleHelper;
+    private BluetoothBLEHelper bluetoothBleHelper;
 
     private String espImuDeviceAddress;
     private BluetoothGatt connectedGatt;
 
     private BluetoothGattCharacteristic linearAccelerationNotificationCharacteristic;
     private BluetoothGattCharacteristic rotationVectorNotificationCharacteristic;
-
+    private BluetoothGattCharacteristic clawNotificationCharacteristic;
     private boolean isBleCharacteristicsReady = false;
-
+    private Kinematics kinematics;
     private Handler mainHandler;
 
     private final ImuSensorFusion sensorFusion = new ImuSensorFusion();
     private final ImuDataProcessor imuDataProcessor = new ImuDataProcessor(sensorFusion);
     private Context fragmentContext;
-
     private Class<? extends Fragment> currentSecondaryFragmentClass = null;
 
     /**
@@ -134,7 +137,7 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
             showToast("Bluetooth not supported on this device.");
             Log.e(TAG, "Bluetooth not supported on this device.");
         } else {
-            bluetoothBleHelper = new BluetoothHelper(context, bluetoothAdapter);
+            bluetoothBleHelper = new BluetoothBLEHelper(context, bluetoothAdapter);
             bluetoothClassicHelper = new BluetoothClassicHelper(context, bluetoothAdapter);
 
             // Set up the callback for data received from the Bluetooth Classic Watch
@@ -195,7 +198,7 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
         if (savedInstanceState == null) {
             loadSecondaryFragment(GimbleFragment.class); // Load GimbalFragment initially as default display
         }
-
+        kinematics = new Kinematics();
         // Set up the listener for when processed IMU data is ready to be sent FROM Android TO ESP32 via BLE
         imuDataProcessor.setDataReadyListener(new ImuDataProcessor.ImuDataReadyListener() {
             @Override
@@ -215,7 +218,13 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
             public void onLinearAccelerationDataReady(byte[] linearAccelerationDataBytes) {
                 // Check if BLE connection and characteristics are ready before writing
                 if (connectedGatt != null && linearAccelerationNotificationCharacteristic != null && isBleCharacteristicsReady) {
-                    bluetoothBleHelper.writeCharacteristic(connectedGatt, linearAccelerationNotificationCharacteristic, linearAccelerationDataBytes);
+                    short[] armAngles = imuDataProcessor.getArmAngles();
+                    kinematics.update(linearAccelerationDataBytes, armAngles);
+                    armAngles = kinematics.updateArmAngles();
+                    imuDataProcessor.setArmAngles(armAngles);
+
+
+                    bluetoothBleHelper.writeCharacteristic(connectedGatt, linearAccelerationNotificationCharacteristic, imuDataProcessor.convertArmAnglesToBytes());
                 } else {
                     Log.w(TAG, "Cannot send linear acceleration data via BLE: " +
                             (connectedGatt == null ? "ESP IMU GATT is null" : "") +
@@ -223,15 +232,24 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
                             (!isBleCharacteristicsReady ? " or BLE characteristics are not yet ready" : "") + ".");
                 }
             }
+
+            public void onClawDataReady(byte[] clawDataBytes) {
+                if(connectedGatt != null && linearAccelerationNotificationCharacteristic != null && isBleCharacteristicsReady) {
+                    bluetoothBleHelper.writeCharacteristic(connectedGatt, clawNotificationCharacteristic, clawDataBytes);
+                }
+            }
+
+
+
         });
 
         // Set up the internal callback for IMU data processing, which updates the UI
         imuDataProcessor.setImuInternalCallback(new ImuDataProcessor.ImuDataCallback() {
             @Override
-            public void onNewImuData(Vector3f accelerometer, Vector3f gyroscope, Vector3f magnetometer, Vector3f rotationEuler, Vector3f linearAcceleration) {
+            public void onNewImuData(Quaternionf rotationEuler, Vector3f linearAcceleration) {
                 // Ensure fragment is added and activity is active before attempting UI updates
                 if (isAdded() && getActivity() != null) {
-                    mainHandler.post(() -> updateSecondaryFragments(accelerometer, gyroscope, magnetometer, rotationEuler, linearAcceleration));
+                    mainHandler.post(() -> updateSecondaryFragments(rotationEuler, linearAcceleration));
                 }
             }
 
@@ -294,23 +312,24 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
 
     /**
      * Initiates a connection to the Bluetooth Low Energy (BLE) ESP32 IMU device
-     * using the {@link BluetoothHelper}.
+     * using the {@link BluetoothBLEHelper}.
      */
     private void connectToEspImuBle() {
         if (bluetoothBleHelper != null && espImuDeviceAddress != null) {
             Log.d(TAG, "Attempting to connect to ESP IMU (BLE): " + espImuDeviceAddress);
             bluetoothBleHelper.connectBLEDevice(espImuDeviceAddress, this); // 'this' refers to ImuFragment implementing BleGattCallback
+
         } else {
             Log.e(TAG, "BluetoothBleHelper or ESP IMU address is null, cannot connect BLE.");
             showToast("Cannot connect to ESP IMU (BLE).");
         }
     }
 
-    // --- BluetoothHelper.BleGattCallback Implementation ---
+    // --- BluetoothBLEHelper.BleGattCallback Implementation ---
 
     /**
      * Callback indicating a change in the BLE connection state.
-     * This method is part of the {@link BluetoothHelper.BleGattCallback} interface.
+     * This method is part of the {@link BluetoothBLEHelper.BleGattCallback} interface.
      *
      * @param gatt The {@link BluetoothGatt} object representing the GATT client.
      * @param status Status of the GATT operation. {@link BluetoothGatt#GATT_SUCCESS} if the operation completed successfully.
@@ -349,7 +368,7 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
 
     /**
      * Callback invoked when GATT services have been discovered for the remote device.
-     * This method is part of the {@link BluetoothHelper.BleGattCallback} interface.
+     * This method is part of the {@link BluetoothBLEHelper.BleGattCallback} interface.
      *
      * @param gatt The {@link BluetoothGatt} object representing the GATT client.
      * @param status Status of the GATT operation. {@link BluetoothGatt#GATT_SUCCESS} if the operation completed successfully.
@@ -360,17 +379,23 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
             Log.d(TAG, "Services discovered for ESP IMU. Attempting to get characteristics.");
 
             // Get the specific IMU service using its UUID
-            BluetoothGattService imuService = gatt.getService(BluetoothHelper.IMU_SERVICE_UUID);
+            BluetoothGattService imuService = gatt.getService(BluetoothUUID.IMU_SERVICE_UUID);
             if (imuService != null) {
                 // Get the required characteristics within the IMU service
-                rotationVectorNotificationCharacteristic = imuService.getCharacteristic(BluetoothHelper.ROTATION_VECTOR_CHAR_UUID);
-                linearAccelerationNotificationCharacteristic = imuService.getCharacteristic(BluetoothHelper.LINEAR_ACCELERATION_CHAR_UUID);
+                rotationVectorNotificationCharacteristic = imuService.getCharacteristic(BluetoothUUID.ROTATION_VECTOR_CHAR_UUID);
+                linearAccelerationNotificationCharacteristic = imuService.getCharacteristic(BluetoothUUID.LINEAR_ACCELERATION_CHAR_UUID);
+                clawNotificationCharacteristic = imuService.getCharacteristic(BluetoothUUID.CLAW_CHAR_UUID);
 
-                if (rotationVectorNotificationCharacteristic != null && linearAccelerationNotificationCharacteristic != null) {
+
+
+                if (rotationVectorNotificationCharacteristic != null && linearAccelerationNotificationCharacteristic != null && clawNotificationCharacteristic != null) {
                     Log.d(TAG, "Found Notification and Write Characteristics. Enabling notifications...");
                     // Enable notifications for both characteristics to receive data from ESP32
                     bluetoothBleHelper.enableCharacteristicNotifications(connectedGatt, rotationVectorNotificationCharacteristic);
                     bluetoothBleHelper.enableCharacteristicNotifications(connectedGatt, linearAccelerationNotificationCharacteristic);
+                    bluetoothBleHelper.enableCharacteristicNotifications(connectedGatt, clawNotificationCharacteristic);
+
+
                     isBleCharacteristicsReady = true; // Set flag indicating characteristics are ready for use
                     updateStatusText("Status: Connected, Services Ready");
                 } else {
@@ -380,7 +405,7 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
                     updateStatusText("Status: Services Not Ready");
                 }
             } else {
-                Log.e(TAG, "IMU Service not found on ESP32 with UUID: " + BluetoothHelper.IMU_SERVICE_UUID);
+                Log.e(TAG, "IMU Service not found on ESP32 with UUID: " + BluetoothUUID.IMU_SERVICE_UUID);
                 showToast("BLE: IMU Service not found on ESP32.");
                 isBleCharacteristicsReady = false;
                 updateStatusText("Status: Service Missing");
@@ -394,8 +419,8 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
     }
 
     /**
-     * This callback is defined in {@link BluetoothHelper.BleGattCallback} but may be redundant
-     * depending on how {@link BluetoothHelper} internally manages characteristic discovery.
+     * This callback is defined in {@link BluetoothBLEHelper.BleGattCallback} but may be redundant
+     * depending on how {@link BluetoothBLEHelper} internally manages characteristic discovery.
      * For this specific setup, `onServicesDiscovered` is the primary point for characteristic setup.
      *
      * @param linearAccelerationChar The characteristic for linear acceleration.
@@ -403,13 +428,18 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
      */
     @Override
     public void onCharacteristicsDiscovered(BluetoothGattCharacteristic linearAccelerationChar, BluetoothGattCharacteristic rotationVectorChar) {
-        Log.d(TAG, "onCharacteristicsDiscovered callback from BluetoothHelper triggered (redundant for current setup).");
+        Log.d(TAG, "onCharacteristicsDiscovered callback from BluetoothBLEHelper triggered (redundant for current setup).");
         // The actual characteristics are obtained and stored in onServicesDiscovered
+    }
+
+    @Override
+    public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+
     }
 
     /**
      * Callback reporting the result of a characteristic read operation.
-     * This method is part of the {@link BluetoothHelper.BleGattCallback} interface.
+     * This method is part of the {@link BluetoothBLEHelper.BleGattCallback} interface.
      * This is typically for notifications/indications, where data is pushed from the peripheral.
      *
      * @param gatt The {@link BluetoothGatt} object.
@@ -421,18 +451,21 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
         UUID charUuid = characteristic.getUuid();
 
         // Process the received byte array based on its characteristic UUID
-        if (charUuid.equals(BluetoothHelper.ROTATION_VECTOR_CHAR_UUID)) {
+        if (charUuid.equals(BluetoothUUID.ROTATION_VECTOR_CHAR_UUID)) {
             imuDataProcessor.processRotationVectorBLE(value, imuDataProcessor.getImuInternalCallback());
-        } else if (charUuid.equals(BluetoothHelper.LINEAR_ACCELERATION_CHAR_UUID)) {
+        } else if (charUuid.equals(BluetoothUUID.LINEAR_ACCELERATION_CHAR_UUID)) {
             imuDataProcessor.processLinearAccelerationBLE(value, imuDataProcessor.getImuInternalCallback());
-        } else {
+        } else if(charUuid.equals(BluetoothUUID.ARM_ANGLE_UUID)){
+            imuDataProcessor.processArmAngles(value);
+        }
+        else {
             Log.w(TAG, "Received data from unknown BLE characteristic (notification): " + charUuid.toString());
         }
     }
 
     /**
      * Callback indicating the result of a characteristic write operation.
-     * This method is part of the {@link BluetoothHelper.BleGattCallback} interface.
+     * This method is part of the {@link BluetoothBLEHelper.BleGattCallback} interface.
      *
      * @param gatt The {@link BluetoothGatt} object.
      * @param characteristic The characteristic that was written to.
@@ -450,16 +483,18 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
 
     /**
      * Callback indicating the result of a characteristic read operation.
-     * This method is part of the {@link BluetoothHelper.BleGattCallback} interface.
+     * This method is part of the {@link BluetoothBLEHelper.BleGattCallback} interface.
      *
      * @param gatt The {@link BluetoothGatt} object.
      * @param characteristic The characteristic that was read.
      * @param status Status of the read operation. {@link BluetoothGatt#GATT_SUCCESS} if successful.
      */
-    @Override
-    public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+    public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, byte[] value, int status) {
         if (status == BluetoothGatt.GATT_SUCCESS) {
             Log.d(TAG, "Characteristic read successful: " + characteristic.getUuid().toString().substring(4, 8) + ", value: " + bytesToHex(characteristic.getValue()));
+            if (characteristic.getUuid().equals(BluetoothUUID.ARM_ANGLE_UUID)){
+
+            }
         } else {
             Log.e(TAG, "Characteristic read failed: " + characteristic.getUuid().toString().substring(4, 8) + ", status: " + status);
             showToast("BLE read failed: " + status);
@@ -468,7 +503,7 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
 
     /**
      * Callback invoked when the BLE device has been disconnected.
-     * This method is part of the {@link BluetoothHelper.BleGattCallback} interface.
+     * This method is part of the {@link BluetoothBLEHelper.BleGattCallback} interface.
      * It clears GATT-related references and updates the UI status.
      */
     @Override
@@ -483,7 +518,7 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
 
     /**
      * Callback invoked when a BLE connection attempt has failed.
-     * This method is part of the {@link BluetoothHelper.BleGattCallback} interface.
+     * This method is part of the {@link BluetoothBLEHelper.BleGattCallback} interface.
      * It clears GATT-related references and updates the UI status.
      *
      * @param message A descriptive message about the connection failure.
@@ -499,7 +534,7 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
         updateStatusText("Status: Connection Failed");
     }
 
-    // --- End BluetoothHelper.BleGattCallback Implementation ---
+    // --- End BluetoothBLEHelper.BleGattCallback Implementation ---
 
     /**
      * Checks if the secondary fragment container is visible and currently holds a fragment.
@@ -514,13 +549,10 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
      * Updates the currently loaded secondary fragment with the latest IMU data.
      * It determines which type of secondary fragment is active and calls its specific update method.
      *
-     * @param accelerometer The current accelerometer data (filtered from `ImuDataProcessor`).
-     * @param gyroscope The current gyroscope data (corrected from `ImuDataProcessor`).
-     * @param magnetometer The current magnetometer data (raw from `ImuDataProcessor`).
-     * @param rotationEuler The current Euler angles (in degrees) from `ImuDataProcessor`.
+     * @param rotation The current Euler angles (in degrees) from `ImuDataProcessor`.
      * @param linearAcceleration The current linear acceleration data from `ImuDataProcessor`.
      */
-    private void updateSecondaryFragments(Vector3f accelerometer, Vector3f gyroscope, Vector3f magnetometer, Vector3f rotationEuler, Vector3f linearAcceleration) {
+    private void updateSecondaryFragments(Quaternionf rotation, Vector3f linearAcceleration) {
         // Prevent updates if the fragment is not attached, activity is null, or no secondary fragment is active
         if (!isAdded() || getActivity() == null || !isAnySecondaryFragmentActive()) {
             Log.w(TAG, "Fragment not attached, container not visible, or no secondary fragment loaded when trying to update.");
@@ -533,11 +565,11 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
         // Cast and update the specific secondary fragment based on its type
         if (currentFragment instanceof RawDataFragment) {
             ((RawDataFragment) currentFragment).setRawVectors(
-                    imuDataProcessor.getFilteredAccelerometer(), // Using filtered data from processor
-                    imuDataProcessor.getCorrectedGyroscope(),    // Using corrected data from processor
-                    imuDataProcessor.getMagnetometer());         // Using raw data from processor
+                    imuDataProcessor.getRoationAngles(), // Using filtered data from processor
+                    imuDataProcessor.getLinearAcceleration(),    // Using corrected data from processor
+                    new Vector3f(0, 0, 0));         // Using raw data from processor
         } else if (currentFragment instanceof ExtraDataFragment) {
-            ((ExtraDataFragment) currentFragment).setGimbalData(rotationEuler.x, rotationEuler.y, rotationEuler.z);
+            ((ExtraDataFragment) currentFragment).setGimbalData(rotation);
             ((ExtraDataFragment) currentFragment).setLinearAcceleration(linearAcceleration);
         } else if (currentFragment instanceof GimbleFragment) {
             ((GimbleFragment) currentFragment).setRotation(imuDataProcessor.getQuaternion()); // Using quaternion for gimbal rendering
@@ -553,11 +585,11 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
         drawerLayout = binding.drawerLayout;
         navigationView = binding.navView;
         toolbar = binding.imuFragmentToolbar;
-
+        clawSlider = binding.clawSlider;
         binding.statusTextView.setText("Status: Initializing...");
 
         // Set up the click listener for the Disconnect button on the main layout
-        binding.backToScanButton.setOnClickListener(v -> navigateToScanFragment());
+
 
         // Setup the Toolbar with the hamburger icon to open the navigation drawer
         if (getActivity() instanceof androidx.appcompat.app.AppCompatActivity) {
@@ -601,6 +633,15 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
                 connectedDeviceTextView.setText("Connected: " + (espImuDeviceAddress != null ? espImuDeviceAddress : "None"));
             }
         }
+        clawSlider.addOnChangeListener((slider, value, fromUser) -> {
+
+
+            ByteBuffer buffer = ByteBuffer.allocate(2);
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
+            buffer.putShort((short) (value * 100));
+            // Send the correctly formatted 2-byte array.
+            imuDataProcessor.getDataReadyListener().onClawDataReady(buffer.array());
+        });
     }
 
     /**
@@ -724,7 +765,7 @@ public class ImuFragment extends Fragment implements BluetoothHelper.BleGattCall
      */
     private void disconnectFromWatch() {
         if (bluetoothClassicHelper != null) {
-            bluetoothClassicHelper.disconnectFromWatch();
+            bluetoothClassicHelper.disconnect();
         }
     }
 

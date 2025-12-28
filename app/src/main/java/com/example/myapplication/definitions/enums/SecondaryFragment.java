@@ -1,4 +1,4 @@
-package com.example.myapplication.enums;
+package com.example.myapplication.definitions.enums;
 
 import androidx.fragment.app.Fragment;
 
