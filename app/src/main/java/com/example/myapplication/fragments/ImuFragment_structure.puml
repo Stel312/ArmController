@@ -35,18 +35,18 @@ config=StructureConfiguration;
     "removeByClassPackage": "", // cleanup the graph after inheritance/annotation based filtering is done
     "removeByClassName": "",
     "cutMappings": false,
-    "cutEnum": true,
-    "cutTests": true,
-    "cutClient": true,
-    "cutDataAccess": true,
-    "cutInterfaceStructures": true,
-    "cutDataStructures": true,
-    "cutGetterAndSetter": true,
-    "cutConstructors": true
+    "cutEnum": false,
+    "cutTests": false,
+    "cutClient": false,
+    "cutDataAccess": false,
+    "cutInterfaceStructures": false,
+    "cutDataStructures": false,
+    "cutGetterAndSetter": false,
+    "cutConstructors": false
   },
   "graphTraversal": {
-    "forwardDepth": 6,
-    "backwardDepth": 6,
+    "forwardDepth": 9,
+    "backwardDepth": 9,
     "classPackageExcludeFilter": "",
     "classPackageIncludeFilter": "",
     "classNameExcludeFilter": "",
@@ -55,22 +55,22 @@ config=StructureConfiguration;
     "methodNameIncludeFilter": "",
     "hideMappings": false,
     "hideDataStructures": false,
-    "hidePrivateMethods": true,
-    "hideInterfaceCalls": true, // indirection: implementation -> interface (is hidden) -> implementation
+    "hidePrivateMethods": false,
+    "hideInterfaceCalls": false, // indirection: implementation -> interface (is hidden) -> implementation
     "onlyShowApplicationEntryPoints": false, // root node is included
-    "useMethodCallsForStructureDiagram": "ForwardOnly" // ForwardOnly, BothDirections, No
+    "useMethodCallsForStructureDiagram": "BothDirections" // ForwardOnly, BothDirections, No
   },
   "details": {
-    "aggregation": "GroupByClass", // ByClass, GroupByClass, None
+    "aggregation": "None", // ByClass, GroupByClass, None
     "showClassGenericTypes": true,
     "showMethods": true,
     "showMethodParameterNames": true,
     "showMethodParameterTypes": true,
     "showMethodReturnType": true,
-    "showPackageLevels": 2,
+    "showPackageLevels": 5,
     "showDetailedClassStructure": true
   },
-  "rootClass": "com.example.myapplication.bluetooth.BluetoothBLEHelper",
+  "rootClass": "com.example.myapplication.fragments.ImuFragment",
   "extensionCallbackMethod": "" // qualified.class.name#methodName - signature: public static String method(String)
 }
 diagram meta data end '/
@@ -83,19 +83,39 @@ digraph g {
     
 
 'nodes 
-subgraph cluster_1322970774 { 
-   	label=example
-	labeljust=l
-	fillcolor="#ececec"
+BleGattCallback353313962[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(I)BleGattCallback</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >+ onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: int)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: int)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCharacteristicsDiscovered(linearAccelerationCharacteristic: BluetoothGattCharacteristic, rotationVectorCharacteristic: BluetoothGattCharacteristic)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onConnectionFailed(message: String)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onConnectionStateChange(gatt: BluetoothGatt, status: int, newState: int)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onDisconnected()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onServicesDiscovered(gatt: BluetoothGatt, status: int)</TD></TR>
+</TABLE>>
 	style=filled
-   
-   subgraph cluster_915177120 { 
-   	label=myapplication
-	labeljust=l
-	fillcolor="#d8d8d8"
+	margin=0
+	shape=plaintext
+	fillcolor="#F1E5FD"
+];
+
+BleScanCallback353313962[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(I)BleScanCallback</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >+ onBleDeviceFound(device: BluetoothDevice, rssi: int, scanRecord: byte[])</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onScanFailed(errorCode: int)</TD></TR>
+</TABLE>>
 	style=filled
-   
-   BluetoothBLEHelper987593613[
+	margin=0
+	shape=plaintext
+	fillcolor="#F1E5FD"
+];
+
+BluetoothBLEHelper987593613[
 	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
 <TR><TD ALIGN="LEFT" >(C)BluetoothBLEHelper</TD></TR>
 <HR/>
@@ -112,6 +132,7 @@ subgraph cluster_1322970774 {
 <TR><TD ALIGN="LEFT" >-   isBleScanning: boolean [1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   isProcessingQueue: boolean [1]</TD></TR>
 <HR/>
+<TR><TD ALIGN="LEFT" >+ BluetoothBLEHelper(context: Context, bluetoothAdapter: BluetoothAdapter)</TD></TR>
 <TR><TD ALIGN="LEFT" >- bytesToHex(bytes: byte[]): String</TD></TR>
 <TR><TD ALIGN="LEFT" >+ closeGatt()</TD></TR>
 <TR><TD ALIGN="LEFT" >- completedOperation()</TD></TR>
@@ -143,11 +164,14 @@ BluetoothClassicHelper987593613[
 <TR><TD ALIGN="LEFT" >-   watchDataCallback: WatchDataCallback [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   watchSocket: BluetoothSocket [0..1]</TD></TR>
 <HR/>
+<TR><TD ALIGN="LEFT" >+ BluetoothClassicHelper(context: Context, bluetoothAdapter: BluetoothAdapter)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ cancelDiscovery()</TD></TR>
 <TR><TD ALIGN="LEFT" >+ connectToWatch(deviceAddress: String)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ disconnect()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ isConnectedToWatch(): boolean</TD></TR>
 <TR><TD ALIGN="LEFT" >- logAndToast(message: String, isError: boolean)</TD></TR>
 <TR><TD ALIGN="LEFT" >- receiveWatchData()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ setWatchDataCallback(callback: WatchDataCallback)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ startDiscovery(callback: DeviceCallback)</TD></TR>
 <TR><TD ALIGN="LEFT" >- startReceivingWatchData()</TD></TR>
 </TABLE>>
@@ -155,6 +179,115 @@ BluetoothClassicHelper987593613[
 	margin=0
 	shape=plaintext
 	fillcolor="#FFFFFF"
+];
+
+DeviceCallback1044453069[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(I)DeviceCallback</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >+ onDeviceFound(device: BluetoothDevice)</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#F1E5FD"
+];
+
+ExtraDataFragment555551785[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(C)ExtraDataFragment</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >-   accXExtraTextView: TextView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   accYExtraTextView: TextView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   accZExtraTextView: TextView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   pitchTextView: TextView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   rollTextView: TextView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   yawTextView: TextView [0..1]</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >+ ExtraDataFragment()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getAngleAroundAxis(q: Quaternionf, axis: char): float</TD></TR>
+<TR><TD ALIGN="LEFT" >+ newInstance(): ExtraDataFragment</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCreate(savedInstanceState: Bundle)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCreateView(inflater: LayoutInflater, container: ViewGroup, savedInstanceState: Bundle): View</TD></TR>
+<TR><TD ALIGN="LEFT" >+ setGimbalData(q: Quaternionf)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ setLinearAcceleration(accelerometer: Vector3f)</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#FFFFFF"
+];
+
+GimbleFragment555551785[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(C)GimbleFragment</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >-   accelerationColor: float[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   accelerationDrawOrder: short[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   accelerationVertexBuffer: FloatBuffer [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   axisDrawListBuffer: ByteBuffer [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   axisDrawOrder: short[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   axisVertexBuffer: FloatBuffer [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   axisVertices: float[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   cubeColor: float[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   cubeVertices: float[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   drawListBuffer: ByteBuffer [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   drawOrder: short[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   fragmentShaderCode: String [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   glSurfaceView: GLSurfaceView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   linearAcceleration: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   mColorHandle: int [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   mMVPMatrixHandle: int [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   mPositionHandle: int [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   mProgram: int [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   modelMatrix: float[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   mvpMatrix: float[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   projectionMatrix: float[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   quaternionRotation: Quaternionf [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   rotation: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   vertexBuffer: FloatBuffer [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   vertexShaderCode: String [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   viewMatrix: float[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   xAxisColor: float[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   yAxisColor: float[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   zAxisColor: float[] [0..*]</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >+ GimbleFragment()</TD></TR>
+<TR><TD ALIGN="LEFT" >- drawAccelerationVector(matrix: float[])</TD></TR>
+<TR><TD ALIGN="LEFT" >- drawAxes(matrix: float[])</TD></TR>
+<TR><TD ALIGN="LEFT" >- drawCube(matrix: float[])</TD></TR>
+<TR><TD ALIGN="LEFT" >- loadShader(type: int, shaderCode: String): int</TD></TR>
+<TR><TD ALIGN="LEFT" >+ newInstance(): GimbleFragment</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCreate(savedInstanceState: Bundle)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCreateView(inflater: LayoutInflater, container: ViewGroup, savedInstanceState: Bundle): View</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onDestroy()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onDrawFrame(gl: GL10)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onPause()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onResume()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onSurfaceChanged(gl: GL10, width: int, height: int)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onSurfaceCreated(gl: GL10, config: EGLConfig)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ setLinearAcceleration(acceleration: Vector3f)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ setRotation(rotation: Vector3f)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ setRotation(quaternion: Quaternionf)</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#FFFFFF"
+];
+
+ImuDataCallback243401361[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(I)ImuDataCallback</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >+ onIncompleteData(rawData: String)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onNewImuData(rotationEuler: Quaternionf, linearAcceleration: Vector3f)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onParsingError(rawData: String, errorMessage: String)</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#F1E5FD"
 ];
 
 ImuDataProcessor706433366[
@@ -172,21 +305,48 @@ ImuDataProcessor706433366[
 <TR><TD ALIGN="LEFT" >-   quaternion: Quaternionf [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   sensorFusion: ImuSensorFusion [0..1]</TD></TR>
 <HR/>
+<TR><TD ALIGN="LEFT" >+ ImuDataProcessor(sensorFusion: ImuSensorFusion)</TD></TR>
 <TR><TD ALIGN="LEFT" >- bytesToHex(bytes: byte[]): String</TD></TR>
 <TR><TD ALIGN="LEFT" >+ convertArmAnglesToBytes(): byte[]</TD></TR>
 <TR><TD ALIGN="LEFT" >+ convertEulerAnglesToBytes(eulerAngles: Vector3f): byte[]</TD></TR>
 <TR><TD ALIGN="LEFT" >+ convertQuaternionToBytes(quaternion: Quaternionf): byte[]</TD></TR>
 <TR><TD ALIGN="LEFT" >+ convertVector3fToBytes(vector: Vector3f): byte[]</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getArmAngles(): short[]</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getCorrectedGyroscope(): Vector3f</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getDataReadyListener(): ImuDataReadyListener</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getFilteredAccelerometer(): Vector3f</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getImuInternalCallback(): ImuDataCallback</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getLinearAcceleration(): Vector3f</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getMagnetometer(): Vector3f</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getQuaternion(): Quaternionf</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getRoationAngles(): Vector3f</TD></TR>
 <TR><TD ALIGN="LEFT" >- isSensorDataValid(vector: Vector3f): boolean</TD></TR>
 <TR><TD ALIGN="LEFT" >+ process(rawData: String, callback: ImuDataCallback)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ processArmAngles(rawBytes: byte[])</TD></TR>
 <TR><TD ALIGN="LEFT" >+ processLinearAccelerationBLE(rawBytes: byte[], callback: ImuDataCallback)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ processRotationVectorBLE(rawBytes: byte[], callback: ImuDataCallback)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ setArmAngles(armAngles: short[])</TD></TR>
+<TR><TD ALIGN="LEFT" >+ setDataReadyListener(listener: ImuDataReadyListener)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ setImuInternalCallback(callback: ImuDataCallback)</TD></TR>
 </TABLE>>
 	style=filled
 	margin=0
 	shape=plaintext
 	fillcolor="#FFFFFF"
+];
+
+ImuDataReadyListener243401361[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(I)ImuDataReadyListener</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >+ onClawDataReady(clawDataBytes: byte[])</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onLinearAccelerationDataReady(linearAccelerationDataBytes: byte[])</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onRotationDataReady(rotationDataBytes: byte[])</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#F1E5FD"
 ];
 
 ImuFragment1719740904[
@@ -213,6 +373,7 @@ ImuFragment1719740904[
 <TR><TD ALIGN="LEFT" >-   sensorFusion: ImuSensorFusion [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   toolbar: Toolbar [0..1]</TD></TR>
 <HR/>
+<TR><TD ALIGN="LEFT" >+ ImuFragment()</TD></TR>
 <TR><TD ALIGN="LEFT" >- bytesToHex(bytes: byte[]): String</TD></TR>
 <TR><TD ALIGN="LEFT" >- checkBluetoothPermissions(): boolean</TD></TR>
 <TR><TD ALIGN="LEFT" >- connectToEspImuBle()</TD></TR>
@@ -221,6 +382,7 @@ ImuFragment1719740904[
 <TR><TD ALIGN="LEFT" >- disconnectFromWatch()</TD></TR>
 <TR><TD ALIGN="LEFT" >+ hideSecondaryFragment()</TD></TR>
 <TR><TD ALIGN="LEFT" >- initUiElements()</TD></TR>
+<TR><TD ALIGN="LEFT" >- isAnySecondaryFragmentActive(): boolean</TD></TR>
 <TR><TD ALIGN="LEFT" >+ loadSecondaryFragment(fragmentClass: Class&lt;? extends Fragment&gt;)</TD></TR>
 <TR><TD ALIGN="LEFT" >- navigateToScanFragment()</TD></TR>
 <TR><TD ALIGN="LEFT" >+ newInstance(deviceAddress: String): ImuFragment</TD></TR>
@@ -271,10 +433,14 @@ ImuSensorFusion706433366[
 <TR><TD ALIGN="LEFT" >-   roll: float [1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   yaw: float [1]</TD></TR>
 <HR/>
+<TR><TD ALIGN="LEFT" >+ ImuSensorFusion()</TD></TR>
 <TR><TD ALIGN="LEFT" >- calculateAlpha(cutoffFrequency: float): float</TD></TR>
 <TR><TD ALIGN="LEFT" >- calculateAlphaHighPass(cutoffFrequency: float): float</TD></TR>
 <TR><TD ALIGN="LEFT" >- filterAccelerometer(rawAccelerometer: Vector3f)</TD></TR>
 <TR><TD ALIGN="LEFT" >- filterGyroscope(rawGyroscope: Vector3f)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getCorrectedGyroscope(): Vector3f</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getEulerAngles(): Vector3f</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getFilteredAccelerometer(): Vector3f</TD></TR>
 <TR><TD ALIGN="LEFT" >+ update(rawAccelerometer: Vector3f, rawGyroscope: Vector3f)</TD></TR>
 <TR><TD ALIGN="LEFT" >- updateEulerAngles()</TD></TR>
 <TR><TD ALIGN="LEFT" >- updateQuaternion()</TD></TR>
@@ -299,10 +465,52 @@ Kinematics1355040687[
 <TR><TD ALIGN="LEFT" >-   position: Vector3f [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   velocity: Vector3f [0..1]</TD></TR>
 <HR/>
+<TR><TD ALIGN="LEFT" >+ Kinematics()</TD></TR>
 <TR><TD ALIGN="LEFT" >- deriveJerk(linearAcceleration: Vector3f, dt: float)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getJerk(): Vector3f</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getPosition(): Vector3f</TD></TR>
+<TR><TD ALIGN="LEFT" >+ getVelocity(): Vector3f</TD></TR>
 <TR><TD ALIGN="LEFT" >- integratePosition(linearAcceleration: Vector3f, dt: float)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ update(linearAcceleration: byte[], armAngles: short[])</TD></TR>
 <TR><TD ALIGN="LEFT" >+ updateArmAngles(): short[]</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#FFFFFF"
+];
+
+MainActivity1561133555[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(C)MainActivity</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" ># onCreate(savedInstanceState: Bundle)</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#FFFFFF"
+];
+
+RawDataFragment555551785[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(C)RawDataFragment</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >-   accXTextView: TextView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   accYTextView: TextView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   accZTextView: TextView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   gyroXTextView: TextView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   gyroYTextView: TextView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   gyroZTextView: TextView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   magXTextView: TextView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   magYTextView: TextView [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   magZTextView: TextView [0..1]</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >+ RawDataFragment()</TD></TR>
+<TR><TD ALIGN="LEFT" >+ newInstance(): RawDataFragment</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCreate(savedInstanceState: Bundle)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onCreateView(inflater: LayoutInflater, container: ViewGroup, savedInstanceState: Bundle): View</TD></TR>
+<TR><TD ALIGN="LEFT" >+ setRawVectors(accelerometer: Vector3f, gyroscope: Vector3f, magnetometer: Vector3f)</TD></TR>
 </TABLE>>
 	style=filled
 	margin=0
@@ -327,6 +535,7 @@ ScanFragment1719740904[
 <TR><TD ALIGN="LEFT" >-   isScanning: boolean [1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   scanButton: Button [0..1]</TD></TR>
 <HR/>
+<TR><TD ALIGN="LEFT" >+ ScanFragment()</TD></TR>
 <TR><TD ALIGN="LEFT" >- addDeviceToList(device: BluetoothDevice, displayString: String)</TD></TR>
 <TR><TD ALIGN="LEFT" >- checkAndRequestBluetoothPermissions()</TD></TR>
 <TR><TD ALIGN="LEFT" >+ newInstance(): ScanFragment</TD></TR>
@@ -346,27 +555,53 @@ ScanFragment1719740904[
 	shape=plaintext
 	fillcolor="#FFFFFF"
 ];
-} 
-} 
+
+WatchDataCallback1044453069[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(I)WatchDataCallback</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >+ onConnectionStatus(isConnected: boolean, message: String)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onDataReceived(data: String)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onReadError(message: String)</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#F1E5FD"
+];
 
 'edges    
-BluetoothBLEHelper987593613 -> ImuFragment1719740904[label="fragmentGattCallback
-[0..1]", arrowhead=none];
-BluetoothBLEHelper987593613 -> ScanFragment1719740904[arrowhead=none];
-BluetoothBLEHelper987593613 -> ScanFragment1719740904[label="bleScanCallback
-[0..1]", arrowhead=none];
+BleGattCallback353313962 -> ImuFragment1719740904[arrowhead=none, arrowtail=empty, dir=both];
+BleScanCallback353313962 -> ScanFragment1719740904[arrowhead=none, arrowtail=empty, dir=both];
+BluetoothBLEHelper987593613 -> BleGattCallback353313962[label="fragmentGattCallback
+[0..1]"];
+BluetoothBLEHelper987593613 -> BleScanCallback353313962[label="bleScanCallback
+[0..1]"];
+BluetoothClassicHelper987593613 -> DeviceCallback1044453069[label="classicDiscoveryCallback
+[0..1]"];
+BluetoothClassicHelper987593613 -> WatchDataCallback1044453069[label="watchDataCallback
+[0..1]"];
+ImuDataProcessor706433366 -> ImuDataCallback243401361[label="imuInternalCallback
+[0..1]"];
+ImuDataProcessor706433366 -> ImuDataReadyListener243401361[label="dataReadyListener
+[0..1]"];
 ImuDataProcessor706433366 -> ImuSensorFusion706433366[label="sensorFusion
 [0..1]"];
 ImuFragment1719740904 -> BluetoothBLEHelper987593613[label="bluetoothBleHelper
 [0..1]"];
 ImuFragment1719740904 -> BluetoothClassicHelper987593613[label="bluetoothClassicHelper
 [0..1]"];
+ImuFragment1719740904 -> GimbleFragment555551785[label="updateSecondaryFragments() -> setRotation()"];
 ImuFragment1719740904 -> ImuDataProcessor706433366[label="imuDataProcessor
 [0..1]"];
+ImuFragment1719740904 -> ImuDataReadyListener243401361[label="initUiElements() -> onClawDataReady()"];
 ImuFragment1719740904 -> ImuSensorFusion706433366[label="sensorFusion
 [0..1]"];
 ImuFragment1719740904 -> Kinematics1355040687[label="kinematics
 [0..1]"];
+ImuFragment1719740904 -> RawDataFragment555551785[label="updateSecondaryFragments() -> setRawVectors()"];
+ImuFragment1719740904 -> ScanFragment1719740904[label="navigateToScanFragment() -> ScanFragment()"];
+MainActivity1561133555 -> ScanFragment1719740904[label="onCreate() -> newInstance()"];
 ScanFragment1719740904 -> BluetoothBLEHelper987593613[label="bluetoothBLEHelper
 [0..1]"];
 ScanFragment1719740904 -> BluetoothClassicHelper987593613[label="bluetoothClassicHelper
