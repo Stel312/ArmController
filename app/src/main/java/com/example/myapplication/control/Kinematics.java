@@ -1,4 +1,4 @@
-package com.example.myapplication.controls;
+package com.example.myapplication.control;
 
 import org.joml.Vector3f;
 

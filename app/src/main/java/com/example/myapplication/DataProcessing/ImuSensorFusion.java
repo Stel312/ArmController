@@ -1,4 +1,4 @@
-package com.example.myapplication.imu;
+package com.example.myapplication.DataProcessing;
 
 import org.joml.Quaternionf;
 import org.joml.Vector3f;

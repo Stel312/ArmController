@@ -20,10 +20,14 @@ import android.util.Log;
 
 import androidx.core.content.ContextCompat;
 
+import com.example.myapplication.definitions.UUID.BluetoothUUID;
+
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class BluetoothBLEHelper {
 
@@ -46,6 +50,7 @@ public class BluetoothBLEHelper {
     private boolean isProcessingQueue = false;
     private final Handler handler = new Handler(Looper.getMainLooper()); // Handler for queue processing
 
+    private final Map<UUID, CharacteristicProfile> characteristicProfiles = new ConcurrentHashMap<>();
     // For BLE scanning
     private BluetoothLeScanner bluetoothLeScanner;
     private BleScanCallback bleScanCallback; // Callback for BLE scan results
@@ -57,30 +62,21 @@ public class BluetoothBLEHelper {
         if (bluetoothAdapter != null) {
             bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
         }
+
+        characteristicProfiles.put(BluetoothUUID.CLAW_CHAR_UUID, new CharacteristicProfile(100)); // 100ms rate (10 Hz)
+        characteristicProfiles.put(BluetoothUUID.LINEAR_ACCELERATION_CHAR_UUID, new CharacteristicProfile(20)); // 100ms rate (10 Hz)
+        characteristicProfiles.put(BluetoothUUID.ROTATION_VECTOR_CHAR_UUID, new CharacteristicProfile(20)); // 100ms rate (10 Hz)
+
+
     }
+    private static class CharacteristicProfile {
+        final long rateLimitMs; // The minimum time between sends for this characteristic.
+        long lastWriteTime = 0; // The timestamp of the last queued write.
 
-    // --- Interfaces for Callbacks ---
-
-    // Callback for BLE GATT operations
-    public interface BleGattCallback {
-        void onConnectionStateChange(BluetoothGatt gatt, int status, int newState);
-        void onServicesDiscovered(BluetoothGatt gatt, int status);
-        void onCharacteristicsDiscovered(BluetoothGattCharacteristic linearAccelerationCharacteristic, BluetoothGattCharacteristic rotationVectorCharacteristic);
-        void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status);
-        void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status);
-        void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic);
-        void onDisconnected();
-        void onConnectionFailed(String message);
+        CharacteristicProfile(long rateLimitMs) {
+            this.rateLimitMs = rateLimitMs;
+        }
     }
-
-    // Callback for BLE scan results
-    public interface BleScanCallback {
-        void onBleDeviceFound(BluetoothDevice device, int rssi, byte[] scanRecord);
-        void onScanFailed(int errorCode);
-    }
-
-    // --- BLE Connection and GATT Operations ---
-
     public void connectBLEDevice(String address, BleGattCallback callback) {
         if (bluetoothAdapter == null || address == null) {
             Log.w(TAG, "BluetoothAdapter not initialized or unspecified address.");
@@ -146,7 +142,22 @@ public class BluetoothBLEHelper {
             completedOperation(); // Ensure queue processing continues
             return;
         }
+        CharacteristicProfile profile = characteristicProfiles.get(characteristic.getUuid());
 
+        // If a profile exists for this characteristic, apply rate-limiting.
+        if (profile != null) {
+            long currentTime = System.currentTimeMillis();
+
+            // Check if the time since the last write is less than the defined rate limit.
+            if ((currentTime - profile.lastWriteTime) < profile.rateLimitMs) {
+                // It's too soon. Drop the packet and do not queue the operation.
+                Log.v(TAG, "Rate limit applied for " + characteristic.getUuid() + ". Dropping packet.");
+                return;
+            }
+
+            // It's time to send. Update the last write time for this profile.
+            profile.lastWriteTime = currentTime;
+        }
         gattOperationsQueue.add(() -> {
             Log.d(TAG, "Attempting to set characteristic notification for: " + characteristic.getUuid());
             boolean success = gatt.setCharacteristicNotification(characteristic, true);

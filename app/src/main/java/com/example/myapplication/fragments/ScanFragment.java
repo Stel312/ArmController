@@ -92,9 +92,9 @@ public class ScanFragment extends Fragment implements BluetoothBLEHelper.BleScan
                 // Stop any ongoing scans before navigating
                 stopScanning();
 
-                ImuFragment imuFragment = ImuFragment.newInstance(deviceAddress);
+                ControlFragment controlFragment = ControlFragment.newInstance(deviceAddress);
                 FragmentTransaction transaction = getParentFragmentManager().beginTransaction();
-                transaction.replace(R.id.fragment_container_view, imuFragment);
+                transaction.replace(R.id.fragment_container_view, controlFragment);
                 transaction.addToBackStack(null);
                 transaction.commit();
             }
