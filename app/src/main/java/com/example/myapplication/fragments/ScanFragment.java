@@ -19,6 +19,7 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.example.myapplication.R;
+import com.example.myapplication.bluetooth.BleScanCallback;
 import com.example.myapplication.bluetooth.BluetoothBLEHelper;
 import com.example.myapplication.bluetooth.BluetoothClassicHelper; // Import the new Classic helper
 
@@ -33,7 +34,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class ScanFragment extends Fragment implements BluetoothBLEHelper.BleScanCallback {
+public class ScanFragment extends Fragment implements BleScanCallback {
 
     private static final String TAG = "ScanFragment";
     private Button goToImuButton;
@@ -165,9 +166,7 @@ public class ScanFragment extends Fragment implements BluetoothBLEHelper.BleScan
             Set<BluetoothDevice> pairedDevices = bluetoothAdapter.getBondedDevices();
             if (pairedDevices.size() > 0) {
                 for (BluetoothDevice device : pairedDevices) {
-                    if (device.getName() != null && !device.getName().isEmpty()) {
-                        addDeviceToList(device, device.getName() + "\n" + device.getAddress() + " (Paired)");
-                    }
+                   addDeviceToList(device, device.getName() + "\n" + device.getAddress() + " (Paired)");
                 }
             }
         } else {
@@ -266,10 +265,11 @@ public class ScanFragment extends Fragment implements BluetoothBLEHelper.BleScan
     @Override
     public void onBleDeviceFound(BluetoothDevice device, int rssi, byte[] scanRecord) {
         // This callback is invoked on the main thread by BluetoothHelper
+        String name = device.getName();
         if (device.getName() != null && !device.getName().isEmpty()) {
             addDeviceToList(device, device.getName() + "\n" + device.getAddress() + " (BLE, RSSI: " + rssi + ")");
         } else {
-            addDeviceToList(device, "Unknown BLE Device\n" + device.getAddress() + " (BLE, RSSI: " + rssi + ")");
+            //addDeviceToList(device, "Unknown BLE Device\n" + device.getAddress() + " (BLE, RSSI: " + rssi + ")");
         }
     }
 
