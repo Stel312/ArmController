@@ -37,7 +37,7 @@ public class BluetoothBLEHelper {
     // These must match the UUIDs defined in your ESP32 firmware
     public static final UUID IMU_SERVICE_UUID = UUID.fromString("0000180d-0000-1000-8000-00805f9b34fb"); // Example Service UUID
     public static final UUID ROTATION_VECTOR_CHAR_UUID = UUID.fromString("00002a37-0000-1000-8000-00805f9b34fb"); // Example for Rotation Vector (Human Interface Device service)
-    public static final UUID LINEAR_ACCELERATION_CHAR_UUID = UUID.fromString("00002a38-0000-1000-8000-00805f9b34fb"); // Example for Linear Acceleration (Environmental Sensing service)
+    //public static final UUID LINEAR_ACCELERATION_CHAR_UUID = UUID.fromString("00002a38-0000-1000-8000-00805f9b34fb"); // Example for Linear Acceleration (Environmental Sensing service)
     public static final UUID CLIENT_CHARACTERISTIC_CONFIG_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
     private final Context context;
@@ -63,20 +63,13 @@ public class BluetoothBLEHelper {
             bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
         }
 
-        characteristicProfiles.put(BluetoothUUID.CLAW_CHAR_UUID, new CharacteristicProfile(100)); // 100ms rate (10 Hz)
-        characteristicProfiles.put(BluetoothUUID.LINEAR_ACCELERATION_CHAR_UUID, new CharacteristicProfile(20)); // 100ms rate (10 Hz)
-        characteristicProfiles.put(BluetoothUUID.ROTATION_VECTOR_CHAR_UUID, new CharacteristicProfile(20)); // 100ms rate (10 Hz)
+        //characteristicProfiles.put(BluetoothUUID.CLAW_CHAR_UUID, new CharacteristicProfile(2000)); // 100ms rate (10 Hz)
+        //characteristicProfiles.put(BluetoothUUID.LINEAR_ACCELERATION_CHAR_UUID, new CharacteristicProfile(150)); // 100ms rate (10 Hz)
+        characteristicProfiles.put(BluetoothUUID.ROTATION_VECTOR_CHAR_UUID, new CharacteristicProfile(100)); // 100ms rate (10 Hz)
 
 
     }
-    private static class CharacteristicProfile {
-        final long rateLimitMs; // The minimum time between sends for this characteristic.
-        long lastWriteTime = 0; // The timestamp of the last queued write.
 
-        CharacteristicProfile(long rateLimitMs) {
-            this.rateLimitMs = rateLimitMs;
-        }
-    }
     public void connectBLEDevice(String address, BleGattCallback callback) {
         if (bluetoothAdapter == null || address == null) {
             Log.w(TAG, "BluetoothAdapter not initialized or unspecified address.");
@@ -142,22 +135,8 @@ public class BluetoothBLEHelper {
             completedOperation(); // Ensure queue processing continues
             return;
         }
-        CharacteristicProfile profile = characteristicProfiles.get(characteristic.getUuid());
 
-        // If a profile exists for this characteristic, apply rate-limiting.
-        if (profile != null) {
-            long currentTime = System.currentTimeMillis();
 
-            // Check if the time since the last write is less than the defined rate limit.
-            if ((currentTime - profile.lastWriteTime) < profile.rateLimitMs) {
-                // It's too soon. Drop the packet and do not queue the operation.
-                Log.v(TAG, "Rate limit applied for " + characteristic.getUuid() + ". Dropping packet.");
-                return;
-            }
-
-            // It's time to send. Update the last write time for this profile.
-            profile.lastWriteTime = currentTime;
-        }
         gattOperationsQueue.add(() -> {
             Log.d(TAG, "Attempting to set characteristic notification for: " + characteristic.getUuid());
             boolean success = gatt.setCharacteristicNotification(characteristic, true);
@@ -203,10 +182,18 @@ public class BluetoothBLEHelper {
             completedOperation(); // Ensure queue processing continues
             return;
         }
-
-        characteristic.setValue(value);
+        CharacteristicProfile profile = characteristicProfiles.get(characteristic.getUuid());
+        if (profile != null) {
+            long currentTime = System.currentTimeMillis();
+            if ((currentTime - profile.lastWriteTime) < profile.rateLimitMs) {
+                // Log.v(TAG, "Rate limit applied for " + characteristic.getUuid() + ". Dropping write.");
+                return; // EXIT EARLY: Do not add to queue
+            }
+            profile.lastWriteTime = currentTime;
+        }
 
         gattOperationsQueue.add(() -> {
+            characteristic.setValue(value);
             boolean success = gatt.writeCharacteristic(characteristic);
             if (!success) {
                 Log.e(TAG, "Failed to write characteristic " + characteristic.getUuid() + " to device.");
@@ -242,7 +229,7 @@ public class BluetoothBLEHelper {
         gattOperationsQueue.poll();
         isProcessingQueue = false;
         // Schedule next operation with a small delay to avoid overwhelming the BLE stack
-        handler.postDelayed(this::processNextOperation, 100);
+        handler.postDelayed(this::processNextOperation, 0   );
     }
 
     private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
@@ -254,6 +241,9 @@ public class BluetoothBLEHelper {
                     Log.i(TAG, "Connected to GATT client. Discovering services...");
                     if (fragmentGattCallback != null) {
                         fragmentGattCallback.onConnectionStateChange(gatt, status, newState);
+                        gatt.readPhy();
+                        gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
+                        gatt.setPreferredPhy(BluetoothDevice.PHY_LE_2M, BluetoothDevice.PHY_LE_2M, BluetoothDevice.PHY_OPTION_S2);
                     }
                     if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
                         gatt.discoverServices();
@@ -263,6 +253,8 @@ public class BluetoothBLEHelper {
                             fragmentGattCallback.onConnectionFailed("Permission denied for service discovery.");
                         }
                     }
+                    gatt.requestMtu(517);
+                    Log.i(TAG, "Discovering services...");
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                     Log.i(TAG, "Disconnected from GATT client.");
                     if (fragmentGattCallback != null) {
@@ -279,6 +271,32 @@ public class BluetoothBLEHelper {
                 }
             });
         }
+
+        @Override
+        public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
+            super.onMtuChanged(gatt, mtu, status);
+            Log.i(TAG, "MTU is now: " + mtu);
+
+            // Now that MTU is set, it is safe to discover services
+            handler.post(() -> {
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "Starting Service Discovery after MTU settled...");
+                    gatt.discoverServices();
+                }
+            });
+        }
+
+        @Override
+        public void onPhyRead(BluetoothGatt gatt, int txPhy, int rxPhy, int status) {
+            super.onPhyRead(gatt, txPhy, rxPhy, status);
+            Log.d(TAG, "onPhyRead: " + txPhy + ", " + rxPhy + ", " + status);
+        }
+
+        @Override
+        public void onPhyUpdate(BluetoothGatt gatt, int txPhy, int rxPhy, int status) {
+            super.onPhyUpdate(gatt, txPhy, rxPhy, status);
+        }
+
 
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
@@ -301,12 +319,12 @@ public class BluetoothBLEHelper {
                     }
 
                     BluetoothGattCharacteristic rotationVectorChar = imuService.getCharacteristic(ROTATION_VECTOR_CHAR_UUID);
-                    BluetoothGattCharacteristic linearAccelerationChar = imuService.getCharacteristic(LINEAR_ACCELERATION_CHAR_UUID);
+                    //BluetoothGattCharacteristic linearAccelerationChar = imuService.getCharacteristic(LINEAR_ACCELERATION_CHAR_UUID);
 
-                    if (rotationVectorChar != null && linearAccelerationChar != null) {
+                    if (rotationVectorChar != null ){ //&& linearAccelerationChar != null) {
                         Log.d(TAG, "Found Rotation Vector and Linear Acceleration notification characteristics.");
                         if (fragmentGattCallback != null) {
-                            fragmentGattCallback.onCharacteristicsDiscovered(linearAccelerationChar, rotationVectorChar);
+                            //fragmentGattCallback.onCharacteristicsDiscovered(linearAccelerationChar, rotationVectorChar);
                         }
                     } else {
                         Log.e(TAG, "One or more required IMU notification characteristics not found.");
@@ -339,13 +357,14 @@ public class BluetoothBLEHelper {
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicWrite(gatt, characteristic, status);
-            handler.post(() -> {
-                Log.d(TAG, "onCharacteristicWrite: " + characteristic.getUuid().toString().substring(4, 8) + ", status: " + status);
-                if (fragmentGattCallback != null) {
-                    fragmentGattCallback.onCharacteristicWrite(gatt, characteristic, status);
-                }
-                completedOperation();
-            });
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                Log.d(TAG, "Hardware confirmed write success for: " + characteristic.getUuid());
+            } else {
+                Log.e(TAG, "Hardware reported write failure: " + status);
+            }
+
+            // Now that the hardware is definitely done, move to the next operation
+            completedOperation();
         }
 
         @Override
@@ -361,10 +380,7 @@ public class BluetoothBLEHelper {
         @Override
         public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
             super.onDescriptorWrite(gatt, descriptor, status);
-            handler.post(() -> {
-                Log.d(TAG, "onDescriptorWrite: " + descriptor.getCharacteristic().getUuid().toString().substring(4, 8) + ", status: " + status);
-                completedOperation();
-            });
+            completedOperation();
         }
     };
 

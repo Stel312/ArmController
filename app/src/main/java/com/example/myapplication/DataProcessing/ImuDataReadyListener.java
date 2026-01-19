@@ -1,5 +1,7 @@
 package com.example.myapplication.DataProcessing;
 
+import org.joml.Vector3f;
+
 /**
  * Listener interface to signal when processed IMU data (from the Watch, via RFCOMM)
  * is ready for BLE transmission from the Android App TO an ESP32.
@@ -11,14 +13,15 @@ public interface ImuDataReadyListener {
      * The data typically represents a quaternion.
      * @param rotationDataBytes A byte array containing the rotation data.
      */
-    void onRotationDataReady(byte[] rotationDataBytes);
+    void onRotationDataReady(Object o);
 
     /**
      * Called when linear acceleration data (as a byte array) is ready for BLE transmission.
      * @param linearAccelerationDataBytes A byte array containing the linear acceleration data.
      */
-    void onLinearAccelerationDataReady(byte[] linearAccelerationDataBytes);
+    void onLinearAccelerationDataReady(Vector3f linearAccelerationData);
     // Add other data types if you plan to send them from Android to ESP32
 
-    void onClawDataReady(byte[] clawDataBytes);
+    void onClawDataReady(float clawDataBytes);
+
 }

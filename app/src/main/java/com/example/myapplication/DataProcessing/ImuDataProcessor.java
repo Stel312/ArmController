@@ -18,6 +18,7 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
+import android.provider.ContactsContract;
 import android.util.Log;
 
 import com.example.myapplication.bluetooth.BleGattCallback;
@@ -47,11 +48,6 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
     private static final String WATCH_DEVICE_ADDRESS = "34:E3:FB:82:92:CD";
     private boolean isBleCharacteristicsReady = false;
     private ImuSensorFusion sensorFusion;
-    private final Vector3f linearAcceleration = new Vector3f();
-    private final Quaternionf quaternion = new Quaternionf(); // Stores rotation from Watch (RFCOMM) or ESP32 (BLE)
-    private final Vector3f eulerAngles = new Vector3f(); // Stores rotation in degrees from Watch (RFCOMM) or ESP32 (BLE)
-    private short[] armAngles = {0, 0, 0}; // Stores the rotation first second and third servos of what the esp32 thinks the arm is at
-    private Kinematics kinematics;
     private BluetoothClassicHelper bluetoothClassicHelper;
     private BluetoothBLEHelper bluetoothBleHelper;
     private String espImuDeviceAddress;
@@ -62,7 +58,7 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
     private BluetoothGattCharacteristic linearAccelerationNotificationCharacteristic;
     private BluetoothGattCharacteristic rotationVectorNotificationCharacteristic;
     private BluetoothGattCharacteristic clawNotificationCharacteristic;
-
+    private DataContainer dataContainer;
     /**
      * Constructs an `ImuDataProcessor`.
      *
@@ -72,7 +68,6 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
      */
     public ImuDataProcessor(Context context, BluetoothAdapter bluetoothAdapter, String espImuDeviceAddress) {
         this.sensorFusion = new ImuSensorFusion();
-        this.kinematics = new Kinematics();
         this.espImuDeviceAddress = espImuDeviceAddress;
         if (bluetoothAdapter != null) {
             bluetoothBleHelper = new BluetoothBLEHelper(context, bluetoothAdapter);
@@ -80,6 +75,7 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
             // Set up the callback for data received from the Bluetooth Classic Watch
             bluetoothClassicHelper.setWatchDataCallback(this);
         }
+        this.dataContainer = new DataContainer();
 
     }
     // Add this new method to link the ViewModel
@@ -90,44 +86,7 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
         return this;
     }
 
-    @Override
-    public void onRotationDataReady(byte[] rotationDataBytes) {
-        // Check if BLE connection and characteristics are ready before writing
-        if (connectedGatt != null && rotationVectorNotificationCharacteristic != null && isBleCharacteristicsReady) {
-            bluetoothBleHelper.writeCharacteristic(connectedGatt, rotationVectorNotificationCharacteristic, rotationDataBytes);
-        } else {
-            Log.w(TAG, "Cannot send rotation data via BLE: " +
-                    (connectedGatt == null ? "ESP IMU GATT is null" : "") +
-                    (rotationVectorNotificationCharacteristic == null ? " or rotationVectorNotificationCharacteristic is null" : "") +
-                    (!isBleCharacteristicsReady ? " or BLE characteristics are not yet ready" : "") + ".");
-        }
-    }
 
-    @Override
-    public void onLinearAccelerationDataReady(byte[] linearAccelerationDataBytes) {
-        // Check if BLE connection and characteristics are ready before writing
-        if (connectedGatt != null && linearAccelerationNotificationCharacteristic != null && isBleCharacteristicsReady) {
-            short[] armAngles = this.getArmAngles();
-            kinematics.update(linearAccelerationDataBytes, armAngles);
-            armAngles = kinematics.updateArmAngles();
-            this.setArmAngles(armAngles);
-
-
-            bluetoothBleHelper.writeCharacteristic(connectedGatt, linearAccelerationNotificationCharacteristic, this.convertArmAnglesToBytes());
-        } else {
-            Log.w(TAG, "Cannot send linear acceleration data via BLE: " +
-                    (connectedGatt == null ? "ESP IMU GATT is null" : "") +
-                    (linearAccelerationNotificationCharacteristic == null ? " or linearAccelerationNotificationCharacteristic is null" : "") +
-                    (!isBleCharacteristicsReady ? " or BLE characteristics are not yet ready" : "") + ".");
-        }
-    }
-
-
-    public void onClawDataReady(byte[] clawDataBytes) {
-        if(connectedGatt != null && linearAccelerationNotificationCharacteristic != null && isBleCharacteristicsReady) {
-            bluetoothBleHelper.writeCharacteristic(connectedGatt, clawNotificationCharacteristic, clawDataBytes);
-        }
-    }
     /**
      * Callback indicating a change in the BLE connection state.
      * This method is part of the {@link BleGattCallback} interface.
@@ -288,7 +247,7 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
         } else if (charUuid.equals(BluetoothUUID.LINEAR_ACCELERATION_CHAR_UUID)) {
             this.processLinearAccelerationBLE(value, this);
         } else if(charUuid.equals(BluetoothUUID.ARM_ANGLE_UUID)){
-            this.processArmAngles(value);
+            //this.processArmAngles(value);
         }
         else {
             Log.w(TAG, "Received data from unknown BLE characteristic (notification): " + charUuid.toString());
@@ -316,7 +275,7 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
     @Override
     public void onDataReceived(String data) {
         // Process raw data from the Watch using ImuDataProcessor
-        this.process(data, this);
+        this.process(data);
     }
 
     @Override
@@ -329,14 +288,6 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
     public void onReadError(String message) {
         Log.e(TAG, "Watch data read error: " + message);
         //showToast("Watch error: " + message);
-    }
-
-    @Override
-    public void onNewImuData(Quaternionf rotationEuler, Vector3f linearAcceleration) {
-        // Ensure fragment is added and activity is active before attempting UI updates
-        sharedViewModel.updateAcceleration(linearAcceleration);
-        sharedViewModel.updateRotation(rotationEuler);
-
     }
 
     @Override
@@ -412,6 +363,7 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
         disconnectFromWatch();
         disconnectFromEspImuBle();
     }
+
     /**
      * Processes raw string data received from the RFCOMM watch connection.
      * This method parses the string, updates internal sensor states (accelerometer, gyroscope,
@@ -421,10 +373,9 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
      * @param rawData The raw string data, expected in a comma-separated format like
      * "acc,1.2,3.4,5.6", "gyro,0.1,0.2,0.3", "mag,7.8,9.0,1.2",
      * "linear,1.1,2.2,3.3", or "rotation,0.1,0.2,0.3,0.9".
-     * @param callback The {@link ImuDataCallback} for internal processing updates and errors.
-     * This is typically the `imuInternalCallback` set via `setImuInternalCallback()`.
+
      */
-    public void process(String rawData, ImuDataCallback callback) {
+    public void process(String rawData) {
         String[] values = rawData.split(",");
         if (values.length >= 4) { // Ensure we have the minimum expected data (type, x, y, z)
             try {
@@ -433,36 +384,24 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
                 float y = Float.parseFloat(values[2].trim());
                 float z = Float.parseFloat(values[3].trim());
 
-                boolean dataUpdated = false; // Flag to check if meaningful data was processed
-
+                boolean dataUpdated = false;
+                Quaternionf q = new Quaternionf();
                 switch (type) {
                     case "linear":
-                        linearAcceleration.set(x, y, z);
+                        this.onLinearAccelerationDataReady(new Vector3f(x, y, z));
                         dataUpdated = true;
-                        // If configured, notify listener that linear acceleration data is ready for BLE transmission
-                        this.onLinearAccelerationDataReady(convertVector3fToBytes(linearAcceleration));
                         break;
-                    case "rotation": // Expecting quaternion (x, y, z, w) from Watch
+                    case "rotation":
                         if (values.length == 5) {
                             float w = Float.parseFloat(values[4].trim());
-                            quaternion.set(x, y, z, w);
-                            // Convert quaternion to Euler angles (degrees) for display/fusion
+                            q.set(x, y, z, w);
+                            this.onRotationDataReady(q);
 
                             dataUpdated = true;
-
-                                // Sending raw quaternion is generally more precise for rotation than Euler angles
-                            this.onRotationDataReady(convertQuaternionToBytes(quaternion));
                         } else if ((values.length == 4)) {
-
-
-                            // Convert quaternion to Euler angles (degrees) for display/fusion
-                            eulerAngles.set((x+360) %360, (y +360 )%360, (z+ 360) % 360);
+                            this.onRotationDataReady(new Vector3f(x, y, z));
                             dataUpdated = true;
-
-                            // Alternatively, if ESP32 expects Euler angles:
-                            this.onRotationDataReady(convertEulerAnglesToBytes(eulerAngles));
                         } else {
-                            // If "rotation" type doesn't have 5 values (x,y,z,w), it's incomplete
                             this.onIncompleteData(rawData);
                             return;
                         }
@@ -471,14 +410,8 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
                         Log.w(TAG, "Received unknown data type from Watch: " + type + " in raw data: " + rawData);
                         break;
                 }
-
-                // If any relevant data was updated, trigger the internal callback for UI updates or further processing
                 if (dataUpdated) {
-                    // Note: sensorFusion.update() is currently commented out.
-                    // If you want to run sensor fusion on data coming from the Watch,
-                    // uncomment and call it here, passing the relevant sensor readings.
-                    // For example: sensorFusion.update(accelerometer, gyroscope, magnetometer);
-                    this.onNewImuData(quaternion, linearAcceleration);
+                    this.onNewImuData();
                 }
 
             } catch (NumberFormatException e) {
@@ -492,6 +425,31 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
             // If the raw data doesn't have enough comma-separated values
             this.onIncompleteData(rawData);
         }
+    }
+
+    @Override
+    public void onRotationDataReady(Object rotationData) {
+        // Check if BLE connection and characteristics are ready before writing
+        dataContainer.processRotationVector(rotationData);
+    }
+
+    @Override
+    public void onLinearAccelerationDataReady(Vector3f linearAccelerationData) {
+        dataContainer.processArmVector(linearAccelerationData);
+    }
+
+
+    public void onClawDataReady(float clawDataBytes) {
+        dataContainer.processClawAngle((byte) clawDataBytes);
+        this.onNewImuData();
+    }
+
+    @Override
+    public void onNewImuData() {
+        // Ensure fragment is added and activity is active before attempting UI updates
+        sharedViewModel.updateAcceleration(dataContainer.getArmVector());
+        sharedViewModel.updateRotation(dataContainer.getQuaternion());
+        this.bluetoothBleHelper.writeCharacteristic(connectedGatt, rotationVectorNotificationCharacteristic, dataContainer.processData());
     }
 
     /**
@@ -524,7 +482,7 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
             float z = buffer.getFloat();
             float w = buffer.getFloat();
 
-            quaternion.set(x, y, z, w); // Update the internal quaternion from ESP32 data
+            //quaternion.set(x, y, z, w); // Update the internal quaternion from ESP32 data
 
             // Convert quaternion to Euler angles (degrees) for display/fusion
 
@@ -533,7 +491,7 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
                 // Pass the updated IMU data to the UI or other consumers.
                 // Note: accelerometer, gyroscope, magnetometer, linearAcceleration are not directly updated by this BLE call,
                 // so their current values are passed along.
-                callback.onNewImuData(quaternion, linearAcceleration);
+                //callback.onNewImuData(quaternion, linearAcceleration);
             }
         } catch (Exception e) {
             // Catch any parsing or unexpected errors during BLE data processing
@@ -573,13 +531,13 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
             float y = buffer.getFloat();
             float z = buffer.getFloat();
 
-            linearAcceleration.set(x, y, z); // Update the internal linear acceleration from ESP32 data
+            //linearAcceleration.set(x, y, z); // Update the internal linear acceleration from ESP32 data
 
             if (callback != null) {
                 // Pass the updated IMU data to the UI or other consumers.
                 // Note: accelerometer, gyroscope, magnetometer, eulerAngles/quaternion are not directly updated by this BLE call,
                 // so their current values are passed along.
-                callback.onNewImuData(quaternion, linearAcceleration);
+                //callback.onNewImuData(quaternion, linearAcceleration);
             }
         } catch (Exception e) {
             // Catch any parsing or unexpected errors during BLE data processing
@@ -590,25 +548,13 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
         }
     }
 
-    public void processArmAngles(byte[] rawBytes){
-        try {
-            ByteBuffer buffer = ByteBuffer.wrap(rawBytes);
-            buffer.order(ByteOrder.LITTLE_ENDIAN);
-            for (int i = 0; i < this.armAngles.length; i++) {
-                this.armAngles[i] = buffer.getShort();
-            }
-            Log.d(TAG, "Processed arm angles: " + this.armAngles[0] + ", " + this.armAngles[1] + ", " + this.armAngles[2]);
-        } catch (Exception e) {
-            Log.e(TAG, "Error parsing BLE arm angle data: " + e.getMessage());
-        }
-    }
     /**
      * Retrieves the current linear acceleration data. This value is updated by either
      * processing data from the Watch (RFCOMM) or the ESP32 (BLE).
      * @return A {@link Vector3f} representing the latest linear acceleration.
      */
     public Vector3f getLinearAcceleration() {
-        return linearAcceleration; // Latest linear acceleration, could be from Watch or ESP32
+        return dataContainer.getArmVector(); // Latest linear acceleration, could be from Watch or ESP32
     }
 
     /**
@@ -617,111 +563,11 @@ public class ImuDataProcessor implements ImuDataReadyListener, WatchDataCallback
      * @return A {@link Quaternionf} representing the latest rotation quaternion.
      */
     public Quaternionf getQuaternion() {
-        return quaternion; // Latest quaternion, from Watch or ESP32
+        return dataContainer.getQuaternion(); // Latest quaternion, from Watch or ESP32
     }
-
-    // --- Helper for data validation (can be adapted) ---
-    /**
-     * Checks if a given {@link Vector3f} contains valid (non-NaN, non-zero) sensor data.
-     * Currently not directly used in the process methods, but good to keep for potential checks.
-     * @param vector The {@link Vector3f} to validate.
-     * @return True if the vector contains valid data, false otherwise.
-     */
-    private boolean isSensorDataValid(Vector3f vector) {
-        return !Float.isNaN(vector.x) && !Float.isNaN(vector.y) && !Float.isNaN(vector.z) &&
-                (vector.x != 0 || vector.y != 0 || vector.z != 0);
+    public Vector3f getRotation(){
+        return dataContainer.getGimbalAngles();
     }
-
-    // --- Byte Conversion Methods for BLE Transmission (Android App -> ESP32) ---
-    // These methods convert JOML Vector3f/Quaternionf into byte arrays suitable for BLE Characteristic Writes.
-
-
-    public short[] getArmAngles() {
-        return armAngles;
-    }
-
-    public void setArmAngles(short[] armAngles) {
-        this.armAngles = armAngles;
-    }
-    public Vector3f getRoationAngles() {
-
-        short yAngle = (short) clamp(((-eulerAngles.y + 360 + 163
-        ) %360), 0, 270);
-        short xAngle = (short) clamp(((eulerAngles.x + 630 +69) % 360), 0, 270);
-
-        return new Vector3f(xAngle, yAngle, eulerAngles.z);
-    }
-
-    public byte[] convertArmAnglesToBytes() {
-        ByteBuffer buffer = ByteBuffer.allocate(6);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        for (short angle : this.armAngles) {
-            buffer.putShort(angle);
-        }
-        return buffer.array();
-    }
-
-
-    /**
-     * Converts a {@link Vector3f} (like linear acceleration) into a 6-byte array.
-     * Each float component (x, y, z) is scaled by a factor (`ACCEL_SCALE_FACTOR`)
-     * and truncated to a `short` (2 bytes). This requires the ESP32 to reverse the scaling
-     * by dividing by the same factor during reception.
-     *
-     * Example: a float value of 1.234, with `ACCEL_SCALE_FACTOR` of 1000.0f, becomes short 1234.
-     * The ESP32 would then calculate 1234 / 1000.0f = 1.234.
-     *
-     * @param vector The {@link Vector3f} to convert.
-     * @return A 6-byte array representing the vector.
-     */
-    public byte[] convertVector3fToBytes(Vector3f vector) {
-        ByteBuffer buffer = ByteBuffer.allocate(6); // 3 shorts * 2 bytes/short
-        buffer.order(ByteOrder.LITTLE_ENDIAN); // Crucial: Ensure byte order matches ESP32's expectation for writes
-        // Scaling factor for linear acceleration. Adjust as needed.
-        // Make sure the scaled value (e.g., vector.x * 1000) fits within a short (-32768 to 32767).
-        final float ACCEL_SCALE_FACTOR = 1000.0f;
-        buffer.putShort((short) (vector.x * ACCEL_SCALE_FACTOR));
-        buffer.putShort((short) (vector.y * ACCEL_SCALE_FACTOR));
-        buffer.putShort((short) (vector.z * ACCEL_SCALE_FACTOR));
-        return buffer.array();
-    }
-
-    public byte[] convertEulerAnglesToBytes(Vector3f eulerAngles){
-        ByteBuffer buffer = ByteBuffer.allocate(4);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        buffer.putShort((short )getRoationAngles().y);
-        buffer.putShort((short )getRoationAngles().x);
-        return buffer.array();
-    }
-    /**
-     * Converts a {@link Quaternionf} into an 8-byte array.
-     * Each float component (x, y, z, w) is scaled by a factor (`Q_SCALE_FACTOR`)
-     * and truncated to a `short` (2 bytes). This is generally preferred for transmitting
-     * rotation data over Euler angles due to precision and avoidance of gimbal lock issues.
-     *
-     * @param quaternion The {@link Quaternionf} to convert.
-     * @return An 8-byte array representing the quaternion.
-     */
-    public byte[] convertQuaternionToBytes(Quaternionf quaternion) {
-        ByteBuffer buffer = ByteBuffer.allocate(4); // 4 shorts * 2 bytes/short
-        buffer.order(ByteOrder.LITTLE_ENDIAN); // Crucial: Ensure byte order matches ESP32's expectation for writes
-
-        // Scaling factor for quaternion components (which theoretically range from -1.0 to 1.0).
-        // A factor like 10000 provides good precision (e.g., 0.5000 becomes 5000).
-        // Max value 1.0 * 10000 = 10000, which easily fits within a short (-32768 to 32767).
-        final float Q_SCALE_FACTOR = 10000.0f;
-
-        Vector3f eulerAngles = new Vector3f(); // [pitch, yaw, roll]
-        quaternion.getEulerAnglesYXZ(eulerAngles);  // radians
-
-        // Convert radians to degrees and apply clamping.
-        float xAngle = (float) Math.toDegrees(eulerAngles.x);
-        float yAngle = (float) Math.toDegrees(eulerAngles.y);
-        buffer.putShort((short) (((eulerAngles.x) + 630) % 360f * Q_SCALE_FACTOR));
-        buffer.putShort((short) (((eulerAngles.y) + 630) % 360f * Q_SCALE_FACTOR));
-        return buffer.array();
-    }
-
     /**
      * Helper method to convert a byte array to a hexadecimal string representation for logging.
      * @param bytes The byte array to convert.

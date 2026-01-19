@@ -120,18 +120,8 @@ public class ControlFragment extends Fragment {
     public void onAttach(@NonNull Context context) {
         super.onAttach(context);
         this.fragmentContext = context;
-        sharedViewModel = new ViewModelProvider(requireActivity()).get(SharedImuViewModel.class);
-        BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        imuDataProcessor = new ImuDataProcessor(fragmentContext, bluetoothAdapter, espImuDeviceAddress);
-        imuDataProcessor.setSharedViewModel(sharedViewModel);
-        if (bluetoothAdapter == null) {
-            showToast("Bluetooth not supported on this device.");
-            Log.e(TAG, "Bluetooth not supported on this device.");
-        }
-        if (checkBluetoothPermissions()) {
-            imuDataProcessor.connect();
-        }
-        setObservers();
+
+
     }
     private void setObservers(){
         sharedViewModel.getStatus().observe(getViewLifecycleOwner(), updateStatusText -> {
@@ -179,6 +169,19 @@ public class ControlFragment extends Fragment {
         if (savedInstanceState == null) {
             loadSecondaryFragment(GimbleFragment.class); // Load GimbalFragment initially as default display
         }
+
+        sharedViewModel = new ViewModelProvider(requireActivity()).get(SharedImuViewModel.class);
+        BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        imuDataProcessor = new ImuDataProcessor(fragmentContext, bluetoothAdapter, espImuDeviceAddress);
+        imuDataProcessor.setSharedViewModel(sharedViewModel);
+        if (bluetoothAdapter == null) {
+            showToast("Bluetooth not supported on this device.");
+            Log.e(TAG, "Bluetooth not supported on this device.");
+        }
+        if (checkBluetoothPermissions()) {
+            imuDataProcessor.connect();
+        }
+        setObservers();
         // Set up the listener for when processed IMU data is ready to be sent FROM Android TO ESP32 via BLE
 
         // Check for Bluetooth permissions and initiate connections if granted
@@ -260,7 +263,7 @@ public class ControlFragment extends Fragment {
         // Cast and update the specific secondary fragment based on its type
         if (currentFragment instanceof RawDataFragment) {
             ((RawDataFragment) currentFragment).setRawVectors(
-                    imuDataProcessor.getRoationAngles(), // Using filtered data from processor
+                    imuDataProcessor.getRotation(), // Using filtered data from processor
                     linearAcceleration,    // Using corrected data from processor
                     new Vector3f(0, 0, 0));         // Using raw data from processor
         } else if (currentFragment instanceof ExtraDataFragment) {
@@ -329,13 +332,8 @@ public class ControlFragment extends Fragment {
             }
         }
         clawSlider.addOnChangeListener((slider, value, fromUser) -> {
-
-
-            ByteBuffer buffer = ByteBuffer.allocate(2);
-            buffer.order(ByteOrder.LITTLE_ENDIAN);
-            buffer.putShort((short) (value * 100));
             // Send the correctly formatted 2-byte array.
-            imuDataProcessor.onClawDataReady(buffer.array());
+            imuDataProcessor.onClawDataReady(value);
         });
     }
 

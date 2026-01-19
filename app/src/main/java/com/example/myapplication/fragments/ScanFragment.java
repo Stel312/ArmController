@@ -181,7 +181,7 @@ public class ScanFragment extends Fragment implements BleScanCallback {
                 if (device.getName() != null && !device.getName().isEmpty()) {
                     addDeviceToList(device, device.getName() + "\n" + device.getAddress() + " (Classic)");
                 } else {
-                    addDeviceToList(device, "Unknown Classic Device\n" + device.getAddress());
+                    //addDeviceToList(device, "Unknown Classic Device\n" + device.getAddress());
                 }
             });
         } else {

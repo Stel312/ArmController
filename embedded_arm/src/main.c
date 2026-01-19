@@ -8,7 +8,9 @@
 #include "driver/ledc.h"
 #include "esp_err.h"
 #include "esp_bt.h"
+#include "esp_timer.h"
 #include <math.h> // For M_PI, cos, sin, etc.
+#include <string.h>
 
 // Device information and UUID definitions
 #define DEVICE_NAME         "ESP32S3_BLE"
@@ -39,6 +41,7 @@
 //Bluetooth stack connection info
 static esp_gatt_if_t gatts_if;
 static  uint16_t conn_id;
+static int64_t last_write_time = 0; // Track time of last characteristic write
 
 
 static uint16_t service_handle;
@@ -78,21 +81,21 @@ static float target_phi_deg = 0.0;
 
 esp_ble_gap_ext_adv_t adv_inst = {
     .instance = 0,
-    .duration = 300,
-    .max_events = 100,
+    .duration = 0,
+    .max_events =0,
 };
 
 esp_ble_gap_ext_adv_params_t ext_adv_params_2M = {
-  .type = ESP_BLE_GAP_SET_EXT_ADV_PROP_SCANNABLE,
+  .type = ESP_BLE_GAP_SET_EXT_ADV_PROP_CONNECTABLE,
   .interval_min = 0x40,
   .interval_max = 0x40,
   .channel_map = ADV_CHNL_ALL,
-  .own_addr_type = BLE_ADDR_TYPE_RANDOM,
-  .peer_addr_type = BLE_ADDR_TYPE_RANDOM,
+  .own_addr_type = BLE_ADDR_TYPE_PUBLIC,
+  .peer_addr_type = BLE_ADDR_TYPE_PUBLIC,
   .peer_addr = {0, 0, 0, 0, 0, 0},
   .filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
   .tx_power = EXT_ADV_TX_PWR_NO_PREFERENCE,
-  .primary_phy = ESP_BLE_GAP_PHY_2M,
+  .primary_phy = ESP_BLE_GAP_PHY_1M,
   .max_skip = 0,
   .secondary_phy = ESP_BLE_GAP_PHY_2M,
   .sid = 1,
@@ -214,7 +217,7 @@ void servo_init(void)
     ledc_channel_config_t ledc_channel_servo_2 = {
         .channel    = LEDC_CHANNEL_SERVO_2,
         .duty       = 0,            // Duty value will be updated later (e.g., neutral)
-        .gpio_num   = 7,
+        .gpio_num   = 15,
         .speed_mode = LEDC_SPEED_MODE,
         .hpoint     = 0,
         .timer_sel  = LEDC_TIMER,
@@ -247,7 +250,7 @@ void set_servo_angle(ledc_channel_t channel, int angle)
     // Assuming a 50Hz frequency and 13-bit duty resolution (8192-1)
     // Period = 1,000,000 us / 50 Hz = 20,000 us
     uint32_t duty_value = (pulse_width_us * 8191) / 20000;
-
+    printf("Setting servo on channel %d to angle %d (pulse width: %d us, duty: %u)\n", channel, angle, pulse_width_us, (unsigned int)duty_value);
     // Update the PWM duty cycle
     ESP_ERROR_CHECK(ledc_set_duty(LEDC_SPEED_MODE, channel, duty_value));
     ESP_ERROR_CHECK(ledc_update_duty(LEDC_SPEED_MODE, channel));
@@ -263,10 +266,11 @@ void set_servo_angle(ledc_channel_t channel, int angle)
  * over a 20 ms period (50 Hz). With a 13-bit resolution (max 8191),
  * these translate roughly into duty values of about 410 (1 ms) and 819 (2 ms).
  */
-void update_xy_servo_positions(uint16_t x_value, uint16_t y_value)
-{
+void update_xy_servo_positions(int16_t x_value, int16_t y_value)
+{   
     set_servo_angle(LEDC_CHANNEL_X, x_value);
     set_servo_angle(LEDC_CHANNEL_Y, y_value);
+
 }
 
 /*
@@ -423,6 +427,26 @@ void update_arm_position_from_accel(float raw_accel_y, float raw_accel_z) {
  * BLE Event Handlers
  ***************************************/
 
+
+void set_ext_name(uint8_t instance, const char* name) {
+    uint8_t buffer[50]; // Plenty for a name
+    int pos = 0;
+
+    // 1. Add Flags (Standard)
+    buffer[pos++] = 0x02; // Length
+    buffer[pos++] = 0x01; // Type: Flags
+    buffer[pos++] = 0x06; // Value
+
+    // 2. Add Name Automatically
+    uint8_t name_len = strlen(name);
+    buffer[pos++] = name_len + 1; // Length of data + type byte
+    buffer[pos++] = 0x09;        // Type: Complete Local Name
+    memcpy(&buffer[pos], name, name_len);
+    pos += name_len;
+
+    // Send the constructed buffer to the stack
+    esp_ble_gap_config_ext_adv_data_raw(instance, pos, buffer);
+}
 // GAP Event Handler
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
@@ -451,6 +475,13 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
             break;
         case ESP_GAP_BLE_ADV_TERMINATED_EVT:
 
+            break;
+        case ESP_GAP_BLE_EXT_ADV_SET_PARAMS_COMPLETE_EVT:
+            ESP_LOGI("BLE", "Params set. Setting name...");
+            // Call the helper function below to avoid writing hex by hand
+            if (param->ext_adv_set_params.status == ESP_BT_STATUS_SUCCESS) {
+                set_ext_name(0, "EMBEDDEM_ARM"); 
+            }
             break;
         case ESP_GAP_BLE_EXT_ADV_DATA_SET_COMPLETE_EVT:
             ESP_LOGI("BLE", "Set advertising Data");
@@ -603,42 +634,45 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatt_i
             break;
         }
         case ESP_GATTS_WRITE_EVT: {
+            // Get current time in microseconds
+            int64_t current_time = esp_timer_get_time();
+            
+            // Calculate and print time since last write
+            if (last_write_time != 0) {
+                int64_t time_delta_us = current_time - last_write_time;
+                int64_t time_delta_ms = time_delta_us / 1000;
+                ESP_LOGI("BLE", "Time since last write: %" PRId64 " ms (%" PRId64 " us)", time_delta_ms, time_delta_us);
+            }
+            last_write_time = current_time;
+            
             // Log raw data for any characteristic write
             ESP_LOGI("BLE", "Write Event received. Handle: %d, Length: %d", param->write.handle, param->write.len);
             ESP_LOG_BUFFER_HEX("BLE Write Data (Raw)", param->write.value, param->write.len);
 
             // Check for quaternion handle and ensure 4 bytes for X, Y (2 x uint16_t)
-            if (param->write.handle == quaternion_handle && param->write.len >= 4) {
-                uint16_t x = (uint16_t)(param->write.value[0] | (param->write.value[1] << 8));
-                uint16_t y = (uint16_t)(param->write.value[2] | (param->write.value[3] << 8));
+            if (param->write.handle == quaternion_handle) {
+                int16_t x = (uint16_t)(param->write.value[0] | (param->write.value[1] << 8));
+                int16_t y = (uint16_t)(param->write.value[2] | (param->write.value[3] << 8));
                 ESP_LOGI("BLE", "Received X/Y angles: X = %d , Y = %d",
                                  x, y);
                 update_xy_servo_positions(x, y);
-            } else if (param->write.handle == claw_handle && param->write.len >= 2) {
-                uint16_t claw_angle = (uint16_t)(param->write.value[0] | (param->write.value[1] << 8));
+                
+                uint16_t x_arm_angle = (uint16_t)(param->write.value[4] | (param->write.value[5] << 8));
+                uint16_t y_arm_angle = (uint16_t)(param->write.value[6] | (param->write.value[7] << 8));
+                uint16_t z_arm_angle = (uint16_t)(param->write.value[8] | (param->write.value[9] << 8));
+                set_servo_angle(LEDC_CHANNEL_SERVO_1, x_arm_angle);
+                set_servo_angle(LEDC_CHANNEL_SERVO_2, y_arm_angle);
+                set_servo_angle(LEDC_CHANNEL_SERVO_3, z_arm_angle);
+
+                uint16_t claw_angle = (uint16_t)((param->write.value[10]));
                 ESP_LOGI("BLE", "Received Claw angle: %d ", claw_angle);
                 update_claw_position(claw_angle);
+
             } else if (param->write.handle == esc_command_handle && param->write.len >= 4) { // Handle ESC characteristic
                 uint16_t left_speed = (uint16_t)(param->write.value[0] | (param->write.value[1] << 8));
                 uint16_t right_speed = (uint16_t)(param->write.value[2] | (param->write.value[3] << 8));
                 ESP_LOGI("BLE", "Received ESC speeds: Left = %u, Right = %u", left_speed, right_speed);
                 update_esc_speeds(left_speed, right_speed);
-            }
-            else if (param->write.handle == acceleration_handle) {
-                // Log acceleration data specifically
-                ESP_LOGI("BLE", "Received Acceleration data on handle %d", acceleration_handle);
-                // Assuming 3 uint16_t values for X, Y, Z acceleration
-                uint16_t x_accel_raw = (uint16_t)(param->write.value[0] | (param->write.value[1] << 8));
-                uint16_t y_accel_raw = (uint16_t)(param->write.value[2] | (param->write.value[3] << 8));
-                uint16_t z_accel_raw = (uint16_t)(param->write.value[4] | (param->write.value[5] << 8));
-
-                // Convert raw uint16_t to signed int and scale
-                // Assuming a range like +/- 10 m/s^2, adjust scale factor as needed
-                float y_accel = ((int16_t)y_accel_raw);
-                float z_accel = ((int16_t)z_accel_raw) ;
-                
-                update_arm_position_from_accel(y_accel, z_accel);
-                // Further parsing/processing of acceleration data can be added here if needed
             }
             // IMPORTANT: Send a write response for PROPERTY_WRITE characteristics
             esp_ble_gatts_send_response(gatt_if_param, param->write.conn_id, param->write.trans_id,
@@ -677,16 +711,17 @@ void ble_app_init(void)
     esp_err_t ret;
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
     
+    // Release Classic BT memory if not needed to save RAM
+    ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
+    ESP_LOGE("BLE", "Bluetooth memory release status: %x", ret);
+
+
     ret = esp_bt_controller_init(&bt_cfg);
     if (ret != ESP_OK) {
         ESP_LOGE("BLE", "Bluetooth controller init failed: %x", ret);
         return;
     }
     
-    // Release Classic BT memory if not needed to save RAM
-    ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
-    ESP_LOGE("BLE", "Bluetooth memory release status: %x", ret);
-
     ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
     ESP_LOGE("BLE", "Bluetooth enable status: %x", ret);
 
@@ -702,7 +737,11 @@ void ble_app_init(void)
     ret = esp_ble_gap_register_callback(gap_event_handler);
     ESP_LOGE("BLE", "GAP callback registration status: %x", ret);
 
-    esp_ble_gap_set_device_name(DEVICE_NAME);
+    esp_ble_gap_set_device_name(DEVICE_NAME); // this only local
+    
+    uint8_t bt_mac[6];
+    //esp_bt_dev_get_address(bt_mac);
+    //ESP_LOGI("BLE", "BLE MAC: %02X:%02X:%02X:%02X:%02X:%02X",bt_mac[0], bt_mac[1], bt_mac[2], bt_mac[3], bt_mac[4], bt_mac[5]);
 
     // Set advertising data
     /*esp_ble_adv_data_t adv_data = {
@@ -717,8 +756,16 @@ void ble_app_init(void)
     //ret = esp_ble_gap_config_adv_data(&adv_data);
     
     ret = esp_ble_gap_ext_adv_set_params(0, &ext_adv_params_2M);
+    /*
     ESP_LOGE("BLE", "Config adv data status: %x", ret);
-
+    static uint8_t ext_adv_raw_data[] = {
+        // Flags (General Discoverable Mode & BR/EDR Not Supported)
+        0x02, 0x01, 0x06, 
+        
+        // Length: 12 (1 type byte + 11 chars), Type: 0x09 (Complete Local Name)
+        0x0C, 0x09, 'E', 'S', 'P', '_', 'E', 'X', 'T', '_', 'A', 'D', 'V'
+    };
+    esp_ble_gap_config_ext_adv_data_raw(0, sizeof(ext_adv_raw_data), ext_adv_raw_data); */
     ESP_LOGI("BLE", "Bluedroid initialized successfully");
 
     ret = esp_ble_gatts_app_register(INSTANCE_ID);

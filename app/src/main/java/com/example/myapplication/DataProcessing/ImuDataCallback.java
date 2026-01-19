@@ -11,10 +11,8 @@ import org.joml.Vector3f;
 public interface ImuDataCallback {
     /**
      * Called when new, processed IMU data is available.
-     * @param rotationEuler The current Euler angles (in degrees) representing rotation.
-     * @param linearAcceleration The current linear acceleration data.
      */
-    void onNewImuData(Quaternionf rotationEuler, Vector3f linearAcceleration);
+    void onNewImuData();
 
     /**
      * Called when the raw data received is incomplete and cannot be fully parsed.

@@ -1,4 +1,4 @@
-@startuml
+ @startuml
 
 /' diagram meta data start
 config=StructureConfiguration;
@@ -45,8 +45,8 @@ config=StructureConfiguration;
     "cutConstructors": true
   },
   "graphTraversal": {
-    "forwardDepth": 10,
-    "backwardDepth": 10,
+    "forwardDepth": 100,
+    "backwardDepth": 100,
     "classPackageExcludeFilter": "",
     "classPackageIncludeFilter": "",
     "classNameExcludeFilter": "",
@@ -58,7 +58,7 @@ config=StructureConfiguration;
     "hidePrivateMethods": false,
     "hideInterfaceCalls": false, // indirection: implementation -> interface (is hidden) -> implementation
     "onlyShowApplicationEntryPoints": false, // root node is included
-    "useMethodCallsForStructureDiagram": "BothDirections" // ForwardOnly, BothDirections, No
+    "useMethodCallsForStructureDiagram": "ForwardOnly" // ForwardOnly, BothDirections, No
   },
   "details": {
     "aggregation": "GroupByClass", // ByClass, GroupByClass, None
@@ -135,6 +135,7 @@ BluetoothBLEHelper987593613[
 <TR><TD ALIGN="LEFT" >-   bleScanInternalCallback: ScanCallback [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   bluetoothAdapter: BluetoothAdapter [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   bluetoothLeScanner: BluetoothLeScanner [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   characteristicProfiles: Map&lt;UUID, CharacteristicProfile&gt; [0..*]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   connectedGatt: BluetoothGatt [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   context: Context [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   fragmentGattCallback: BleGattCallback [0..1]</TD></TR>
@@ -189,6 +190,19 @@ BluetoothClassicHelper987593613[
 	fillcolor="#FFFFFF"
 ];
 
+CharacteristicProfile353313962[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(C)CharacteristicProfile</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >#   lastWriteTime: long [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >#   rateLimitMs: long [1]</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#FFFFFF"
+];
+
 ControlFragment1719740904[
 	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
 <TR><TD ALIGN="LEFT" >(C)ControlFragment</TD></TR>
@@ -233,6 +247,29 @@ ControlFragment1719740904[
 	fillcolor="#FFFFFF"
 ];
 
+DataContainer238728232[
+	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
+<TR><TD ALIGN="LEFT" >(C)DataContainer</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >-   armAngles: short[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   armPositionAngles: short[] [0..*]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   armVector: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   clawAngle: byte [1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   gimbalAngles: Vector3f [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   kinematics: Kinematics [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   quaternion: Quaternionf [0..1]</TD></TR>
+<HR/>
+<TR><TD ALIGN="LEFT" >+ processArmVector(armVector: Vector3f)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ processClawAngle(clawAngle: byte)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ processData(): byte[]</TD></TR>
+<TR><TD ALIGN="LEFT" >+ processRotationVector(o: Object)</TD></TR>
+</TABLE>>
+	style=filled
+	margin=0
+	shape=plaintext
+	fillcolor="#FFFFFF"
+];
+
 DeviceCallback1044453069[
 	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
 <TR><TD ALIGN="LEFT" >(I)DeviceCallback</TD></TR>
@@ -250,7 +287,7 @@ ImuDataCallback238728232[
 <TR><TD ALIGN="LEFT" >(I)ImuDataCallback</TD></TR>
 <HR/>
 <TR><TD ALIGN="LEFT" >+ onIncompleteData(rawData: String)</TD></TR>
-<TR><TD ALIGN="LEFT" >+ onNewImuData(rotationEuler: Quaternionf, linearAcceleration: Vector3f)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onNewImuData()</TD></TR>
 <TR><TD ALIGN="LEFT" >+ onParsingError(rawData: String, errorMessage: String)</TD></TR>
 </TABLE>>
 	style=filled
@@ -263,18 +300,14 @@ ImuDataProcessor238728232[
 	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
 <TR><TD ALIGN="LEFT" >(C)ImuDataProcessor</TD></TR>
 <HR/>
-<TR><TD ALIGN="LEFT" >-   armAngles: short[] [0..*]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   bluetoothBleHelper: BluetoothBLEHelper [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   bluetoothClassicHelper: BluetoothClassicHelper [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   clawNotificationCharacteristic: BluetoothGattCharacteristic [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   connectedGatt: BluetoothGatt [0..1]</TD></TR>
+<TR><TD ALIGN="LEFT" >-   dataContainer: DataContainer [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   espImuDeviceAddress: String [0..1]</TD></TR>
-<TR><TD ALIGN="LEFT" >-   eulerAngles: Vector3f [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   isBleCharacteristicsReady: boolean [1]</TD></TR>
-<TR><TD ALIGN="LEFT" >-   kinematics: Kinematics [0..1]</TD></TR>
-<TR><TD ALIGN="LEFT" >-   linearAcceleration: Vector3f [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   linearAccelerationNotificationCharacteristic: BluetoothGattCharacteristic [0..1]</TD></TR>
-<TR><TD ALIGN="LEFT" >-   quaternion: Quaternionf [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   rotationVectorNotificationCharacteristic: BluetoothGattCharacteristic [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   sensorFusion: ImuSensorFusion [0..1]</TD></TR>
 <TR><TD ALIGN="LEFT" >-   sharedViewModel: SharedImuViewModel [0..1]</TD></TR>
@@ -283,33 +316,27 @@ ImuDataProcessor238728232[
 <TR><TD ALIGN="LEFT" >+ connect()</TD></TR>
 <TR><TD ALIGN="LEFT" >- connectToEspImuBle()</TD></TR>
 <TR><TD ALIGN="LEFT" >- connectToWatch()</TD></TR>
-<TR><TD ALIGN="LEFT" >+ convertArmAnglesToBytes(): byte[]</TD></TR>
-<TR><TD ALIGN="LEFT" >+ convertEulerAnglesToBytes(eulerAngles: Vector3f): byte[]</TD></TR>
-<TR><TD ALIGN="LEFT" >+ convertQuaternionToBytes(quaternion: Quaternionf): byte[]</TD></TR>
-<TR><TD ALIGN="LEFT" >+ convertVector3fToBytes(vector: Vector3f): byte[]</TD></TR>
 <TR><TD ALIGN="LEFT" >+ disconnect()</TD></TR>
 <TR><TD ALIGN="LEFT" >- disconnectFromEspImuBle()</TD></TR>
 <TR><TD ALIGN="LEFT" >- disconnectFromWatch()</TD></TR>
-<TR><TD ALIGN="LEFT" >- isSensorDataValid(vector: Vector3f): boolean</TD></TR>
 <TR><TD ALIGN="LEFT" >+ onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: int)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: int)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ onCharacteristicsDiscovered(linearAccelerationChar: BluetoothGattCharacteristic, rotationVectorChar: BluetoothGattCharacteristic)</TD></TR>
-<TR><TD ALIGN="LEFT" >+ onClawDataReady(clawDataBytes: byte[])</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onClawDataReady(clawDataBytes: float)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ onConnectionFailed(message: String)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ onConnectionStateChange(gatt: BluetoothGatt, status: int, newState: int)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ onConnectionStatus(isConnected: boolean, message: String)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ onDataReceived(data: String)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ onDisconnected()</TD></TR>
 <TR><TD ALIGN="LEFT" >+ onIncompleteData(rawData: String)</TD></TR>
-<TR><TD ALIGN="LEFT" >+ onLinearAccelerationDataReady(linearAccelerationDataBytes: byte[])</TD></TR>
-<TR><TD ALIGN="LEFT" >+ onNewImuData(rotationEuler: Quaternionf, linearAcceleration: Vector3f)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onLinearAccelerationDataReady(linearAccelerationData: Vector3f)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onNewImuData()</TD></TR>
 <TR><TD ALIGN="LEFT" >+ onParsingError(rawData: String, errorMessage: String)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ onReadError(message: String)</TD></TR>
-<TR><TD ALIGN="LEFT" >+ onRotationDataReady(rotationDataBytes: byte[])</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onRotationDataReady(rotationData: Object)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ onServicesDiscovered(gatt: BluetoothGatt, status: int)</TD></TR>
-<TR><TD ALIGN="LEFT" >+ process(rawData: String, callback: ImuDataCallback)</TD></TR>
-<TR><TD ALIGN="LEFT" >+ processArmAngles(rawBytes: byte[])</TD></TR>
+<TR><TD ALIGN="LEFT" >+ process(rawData: String)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ processLinearAccelerationBLE(rawBytes: byte[], callback: ImuDataCallback)</TD></TR>
 <TR><TD ALIGN="LEFT" >+ processRotationVectorBLE(rawBytes: byte[], callback: ImuDataCallback)</TD></TR>
 </TABLE>>
@@ -323,9 +350,9 @@ ImuDataReadyListener238728232[
 	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
 <TR><TD ALIGN="LEFT" >(I)ImuDataReadyListener</TD></TR>
 <HR/>
-<TR><TD ALIGN="LEFT" >+ onClawDataReady(clawDataBytes: byte[])</TD></TR>
-<TR><TD ALIGN="LEFT" >+ onLinearAccelerationDataReady(linearAccelerationDataBytes: byte[])</TD></TR>
-<TR><TD ALIGN="LEFT" >+ onRotationDataReady(rotationDataBytes: byte[])</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onClawDataReady(clawDataBytes: float)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onLinearAccelerationDataReady(linearAccelerationData: Vector3f)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ onRotationDataReady(o: Object)</TD></TR>
 </TABLE>>
 	style=filled
 	margin=0
@@ -385,20 +412,8 @@ Kinematics459352990[
 <HR/>
 <TR><TD ALIGN="LEFT" >- deriveJerk(linearAcceleration: Vector3f, dt: float)</TD></TR>
 <TR><TD ALIGN="LEFT" >- integratePosition(linearAcceleration: Vector3f, dt: float)</TD></TR>
-<TR><TD ALIGN="LEFT" >+ update(linearAcceleration: byte[], armAngles: short[])</TD></TR>
-<TR><TD ALIGN="LEFT" >+ updateArmAngles(): short[]</TD></TR>
-</TABLE>>
-	style=filled
-	margin=0
-	shape=plaintext
-	fillcolor="#FFFFFF"
-];
-
-MainActivity1561133555[
-	label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" CELLSPACING="0">
-<TR><TD ALIGN="LEFT" >(C)MainActivity</TD></TR>
-<HR/>
-<TR><TD ALIGN="LEFT" ># onCreate(savedInstanceState: Bundle)</TD></TR>
+<TR><TD ALIGN="LEFT" >+ update(linearAcceleration: Vector3f): short[]</TD></TR>
+<TR><TD ALIGN="LEFT" >- updateArmAngles(): short[]</TD></TR>
 </TABLE>>
 	style=filled
 	margin=0
@@ -479,29 +494,35 @@ WatchDataCallback987593613[
 
 'edges    
 BleGattCallback987593613 -> ImuDataProcessor238728232[arrowhead=none, arrowtail=empty, dir=both];
+BleScanCallback987593613 -> ScanFragment1719740904[arrowhead=none, arrowtail=empty, dir=both];
 BluetoothBLEHelper987593613 -> BleGattCallback987593613[label="fragmentGattCallback
 [0..1]"];
 BluetoothBLEHelper987593613 -> BleScanCallback987593613[label="bleScanCallback
 [0..1]"];
+BluetoothBLEHelper987593613 -> CharacteristicProfile353313962[label="characteristicProfiles
+[0..*]"];
 BluetoothClassicHelper987593613 -> DeviceCallback1044453069[label="classicDiscoveryCallback
 [0..1]"];
 BluetoothClassicHelper987593613 -> WatchDataCallback987593613[label="watchDataCallback
 [0..1]"];
 ControlFragment1719740904 -> ImuDataProcessor238728232[label="imuDataProcessor
 [0..1]"];
+ControlFragment1719740904 -> SharedImuViewModel424980928[label="sharedViewModel
+[0..1]"];
+DataContainer238728232 -> Kinematics459352990[label="kinematics
+[0..1]"];
 ImuDataCallback238728232 -> ImuDataProcessor238728232[arrowhead=none, arrowtail=empty, dir=both];
 ImuDataProcessor238728232 -> BluetoothBLEHelper987593613[label="bluetoothBleHelper
 [0..1]"];
 ImuDataProcessor238728232 -> BluetoothClassicHelper987593613[label="bluetoothClassicHelper
 [0..1]"];
-ImuDataProcessor238728232 -> ImuSensorFusion238728232[label="sensorFusion
+ImuDataProcessor238728232 -> DataContainer238728232[label="dataContainer
 [0..1]"];
-ImuDataProcessor238728232 -> Kinematics459352990[label="kinematics
+ImuDataProcessor238728232 -> ImuSensorFusion238728232[label="sensorFusion
 [0..1]"];
 ImuDataProcessor238728232 -> SharedImuViewModel424980928[label="sharedViewModel
 [0..1]"];
 ImuDataReadyListener238728232 -> ImuDataProcessor238728232[arrowhead=none, arrowtail=empty, dir=both];
-MainActivity1561133555 -> ScanFragment1719740904[label="onCreate() -> newInstance()"];
 ScanFragment1719740904 -> BluetoothBLEHelper987593613[label="bluetoothBLEHelper
 [0..1]"];
 ScanFragment1719740904 -> BluetoothClassicHelper987593613[label="bluetoothClassicHelper

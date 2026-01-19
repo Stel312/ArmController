@@ -1,5 +1,7 @@
 package com.example.myapplication.control;
 
+import android.util.Log;
+
 import org.joml.Vector3f;
 
 import java.nio.ByteBuffer;
@@ -41,22 +43,19 @@ public class Kinematics {
      * This method integrates the acceleration data over time to update the state.
      *
      * @param linearAcceleration A byte array containing the linear acceleration data.
-     * @param armAngles A short array representing the current angles of the arm's joints.
      */
-    public void update(byte[] linearAcceleration, short[] armAngles) {
-        ByteBuffer buffer = ByteBuffer.wrap(linearAcceleration);
-        float x = buffer.getFloat();
-        float y = buffer.getFloat();
-        float z = buffer.getFloat();
-        Vector3f currentAcceleration = new Vector3f(x, y, z);
-
+    public short[]  update(Vector3f linearAcceleration) {
+        Vector3f currentAcceleration = linearAcceleration;
+        float f = currentAcceleration.x;
         long currentTime = System.nanoTime();
         float dt = (currentTime - lastTime) / 1000000000.0f;
         this.lastTime = currentTime;
-
         this.integratePosition(currentAcceleration, dt);
         this.deriveJerk(currentAcceleration, dt);
         this.lastTime = currentTime;
+        short[] angles = updateArmAngles();
+        Log.d("Angles", "update: " + angles[0] + ", " + angles[1] + ", " + angles[2]);
+        return  angles;
     }
 
     /**
@@ -67,7 +66,7 @@ public class Kinematics {
      *
      * @return A short array containing the three calculated joint angles (theta1, theta2, theta3) in degrees.
      */
-    public short[] updateArmAngles() {
+    private short[] updateArmAngles() {
         float x_target = position.x;
         float z_target = position.z;
 
